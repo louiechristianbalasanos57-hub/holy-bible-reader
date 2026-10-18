@@ -38,3 +38,45 @@
   display: inline-block !important;
   visibility: visible !important;
 }
+
+/* Fix: Bible search results visibility */
+#searchResults:not(.hidden) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  max-height: 70vh;
+  overflow-y: auto;
+  position: relative;
+  z-index: 999;
+  color: #222 !important;
+  background: #fff !important;
+}
+
+#resultsList {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #222 !important;
+}
+
+#resultsList .result-item {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #222 !important;
+  background: #fff !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  padding: 14px 10px !important;
+  border-bottom: 1px solid #ddd;
+}
+
+#resultsList .result-item p {
+  display: block !important;
+  visibility: visible !important;
+  color: #222 !important;
+  background: transparent !important;
+  line-height: 1.7 !important;
+  overflow-wrap: anywhere;
+}
