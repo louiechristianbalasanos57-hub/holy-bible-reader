@@ -107,12 +107,6 @@ function parseBibleReference(query){
  if(ch<1||ch>book.chapters.length||v<1||vEnd<v||vEnd>(book.chapters[ch-1]||[]).length)return {invalid:true};
  return {book,chapter:ch,verse:v,verseEnd:vEnd};
 }
-function normalizeSearchText(value){
- return cleanText(String(value||""))
-  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-  .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
-  .replace(/\s+/g," ").trim();
-}
 function normalizeSearchText(value) {
   return String(value ?? '')
     .toLowerCase()
@@ -150,7 +144,12 @@ function doSearch() {
   // Open a Bible reference, such as John 3:16.
   const parsed = parseBibleReference(query);
 
-  if (parsed && !parsed.invalid) {
+if (parsed?.invalid) {
+  host.textContent = 'Invalid Bible reference. Check the book, chapter, and verse.';
+  return;
+}
+
+if (parsed && !parsed.invalid) {
     const start = parsed.verse;
     const end = parsed.verseEnd || start;
 
