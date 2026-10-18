@@ -235,25 +235,24 @@ chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;
 $('testament').addEventListener('change',renderBookOptions);
 $('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
 
-$('searchBtn').addEventListener('click', doSearch);
+const searchButton = document.getElementById('searchBtn');
+const searchField = document.getElementById('searchInput');
 
-$('searchInput').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(doSearch, 150);
-});
+if (searchButton && searchField) {
+  searchButton.addEventListener('click', doSearch);
 
-$('searchInput').addEventListener('keydown', event => {
-  if (event.key === 'Enter') {
-    clearTimeout(searchTimer);
-    doSearch();
-  }
-});
-$('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    clearTimeout(searchTimer);
-    doSearch();
-  }
-});
+  searchField.addEventListener('input', () => {
+    clearTimeout(searcherTimer);
+    searcherTimer = setTimeout(doSearch, 150);
+  });
+
+  searchField.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      clearTimeout(searcherTimer);
+      doSearch();
+    }
+  });
+}
 $('closeResults').addEventListener('click',()=>$('searchResults').classList.add('hidden'));
 $('fontUp').addEventListener('click',()=>{state.font=Math.min(1.8,state.font+.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
 $('fontDown').addEventListener('click',()=>{state.font=Math.max(.85,state.font-.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
