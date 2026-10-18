@@ -49,8 +49,8 @@
   overflow-y: auto;
   position: relative;
   z-index: 999;
-  color: #222 !important;
-  background: #fff !important;
+  color: #181515 !important;
+  background: #f1ecec !important;
 }
 
 #resultsList {
@@ -78,5 +78,29 @@
   color: #222 !important;
   background: transparent !important;
   line-height: 1.7 !important;
+  overflow-wrap: anywhere;
+}
+
+.tools.panel {
+  position: relative;
+}
+
+#searchResults:not(.hidden) {
+  display: block !important;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 10px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 10;
+}
+
+#resultsList .result-item {
+  display: block;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
