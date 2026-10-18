@@ -123,7 +123,15 @@ function normalizeSearchText(value){
   .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
   .replace(/\s+/g," ").trim();
 }
-
+function normalizeSearchText(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
 function doSearch() {
   const input = $('searchInput');
   const host = $('resultsList');
