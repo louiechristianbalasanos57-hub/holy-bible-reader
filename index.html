@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173d32"><meta name="description" content="Offline-ready Bible reader with all 66 books, chapter and verse navigation, search, bookmarks and audio.">
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css">
+<title>Holy Bible — Complete Reader</title>
+</head>
+<body>
+<header class="topbar"><div class="brand"><span class="cross">✝</span><div><h1>Holy Bible</h1><p>Read • Search • Reflect</p></div></div><button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button></header>
+<main>
+<section class="hero"><p class="eyebrow">YOUR DAILY SCRIPTURE</p><h2>Find wisdom in every chapter.</h2><p id="status" role="status">Loading Bible text… first launch needs internet. It will be saved for offline reading.</p></section>
+<section class="controls panel">
+<div class="field"><label for="testament">Testament</label><select id="testament"><option value="all">All books</option><option value="OT">Old Testament</option><option value="NT">New Testament</option></select></div>
+<div class="field"><label for="bookSelect">Book</label><select id="bookSelect" disabled><option>Loading books…</option></select></div>
+<div class="field"><label for="chapterSelect">Chapter</label><select id="chapterSelect" disabled><option>—</option></select></div>
+<div class="field"><label for="versionSelect">Translation</label><select id="versionSelect"><option value="KJV">King James Version (KJV)</option></select></div>
+</section>
+<section class="tools panel">
+<div class="searchrow"><input id="searchInput" type="search" placeholder="Search words or verse reference…" aria-label="Search Bible"><button id="searchBtn" class="primary">Search</button></div>
+<div class="toolrow"><button id="prevBtn">← Previous</button><button id="nextBtn">Next →</button><button id="fontDown">A−</button><button id="fontUp">A+</button><button id="readBtn">🔊 Read chapter</button><button id="stopBtn">■ Stop audio</button></div>
+</section>
+<section id="reader" class="reader panel"><div class="empty"><div class="spinner"></div><h3>Preparing your Bible</h3><p>The chapter and verse selectors will appear when the Bible data loads.</p></div></section>
+<section id="searchResults" class="panel results hidden"><div class="sectionhead"><h2>Search results</h2><button id="closeResults">Close</button></div><div id="resultsList"></div></section>
+<section class="extras">
+<article class="panel"><div class="sectionhead"><h2>🔖 Bookmarks</h2><button id="clearBookmarks">Clear</button></div><div id="bookmarkList"><p class="muted">Saved verses will appear here.</p></div></article>
+<article class="panel"><div class="sectionhead"><h2>🌿 Daily verse</h2><button id="dailyBtn">New verse</button></div><blockquote id="dailyVerse">Loading a verse…</blockquote><button id="saveDaily">Save daily verse</button></article>
+</section>
+<footer><p>Text: King James Version (public domain in the United States). Other translations may have different copyright terms.</p><p>For offline use, open once while online, allow the Bible data to finish loading, then revisit this site.</p></footer>
+</main><script src="app.js"></script>
+</body></html>
