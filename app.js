@@ -113,9 +113,6 @@ function normalizeSearchText(value){
   .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
   .replace(/\s+/g," ").trim();
 }
-
-let searchTimer = null;
-
 function doSearch() {
   const q = $('searchInput').value.trim();
   const host = $('resultsList');
