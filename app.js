@@ -28,6 +28,7 @@ function fullBookName(name,index){
 }
 
 const state={books:[],bookIndex:0,chapter:1,font:1.15,bible:null,bookmarks:[],currentVerses:[]};
+let searchTimer = null;
 const DB_NAME='holy-bible-db', DB_STORE='cache';
 const bookSelect=$('bookSelect'), chapterSelect=$('chapterSelect'), reader=$('reader');
 function openDB(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return resolve(null);const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(DB_STORE);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
@@ -113,81 +114,102 @@ function normalizeSearchText(value){
   .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
   .replace(/\s+/g," ").trim();
 }
+
 function doSearch() {
-  const q = $('searchInput').value.trim();
+  const input = $('searchInput');
   const host = $('resultsList');
   const panel = $('searchResults');
 
-  if (!q) {
-    host.innerHTML = '';
+  if (!input || !host || !panel) {
+    console.error('Search HTML elements are missing.');
+    return;
+  }
+
+  const query = input.value.trim();
+  host.replaceChildren();
+
+  if (!query) {
     panel.classList.add('hidden');
     return;
   }
 
-  host.innerHTML = '';
   panel.classList.remove('hidden');
 
-  let count = 0;
+  if (!state.books || state.books.length === 0) {
+    host.textContent = 'Please wait. The Bible text is still loading.';
+    return;
+  }
 
-  // Search for a verse reference, such as John 3:16.
-  const reference = q.match(/^(.+?)\s+(\d+):(\d+)$/i);
+  // Open a Bible reference, such as John 3:16.
+  const parsed = parseBibleReference(query);
 
-  if (reference) {
-    const bookName = reference[1].trim().toLowerCase();
-    const book = state.books.find(
-      b => b.name.toLowerCase() === bookName
-    );
+  if (parsed && !parsed.invalid) {
+    const start = parsed.verse;
+    const end = parsed.verseEnd || start;
 
-    const chapter = Number(reference[2]);
-    const verse = Number(reference[3]);
-
-    if (
-      book &&
-      book.chapters[chapter - 1] &&
-      book.chapters[chapter - 1][verse - 1] !== undefined
-    ) {
+    for (let verse = start; verse <= end; verse++) {
       addResult(
-        book,
-        chapter,
+        parsed.book,
+        parsed.chapter,
         verse,
-        book.chapters[chapter - 1][verse - 1]
+        parsed.book.chapters[parsed.chapter - 1][verse - 1]
       );
-      count++;
     }
-  } else {
-    // Partial-word search across all Bible books.
-    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
 
-    outer:
-    for (const book of state.books) {
-      for (let ci = 0; ci < book.chapters.length; ci++) {
-        const verses = book.chapters[ci];
+    showSearchCount(host, end - start + 1);
+    return;
+  }
 
-        for (let vi = 0; vi < verses.length; vi++) {
-          const verseText = cleanText(verses[vi]).toLowerCase();
+  // Normalize the query and Bible text for partial-word matching.
+  const normalizedQuery = normalizeSearchText(query);
 
-          if (terms.every(term => verseText.includes(term))) {
-            addResult(book, ci + 1, vi + 1, verses[vi]);
-            count++;
+  if (!normalizedQuery) {
+    panel.classList.add('hidden');
+    return;
+  }
 
-            if (count >= 250) break outer;
-          }
+  const terms = normalizedQuery.split(/\s+/);
+  let count = 0;
+  const MAX_RESULTS = 100;
+
+  outer:
+  for (const book of state.books) {
+    for (let ci = 0; ci < book.chapters.length; ci++) {
+      const verses = book.chapters[ci];
+
+      for (let vi = 0; vi < verses.length; vi++) {
+        const text = normalizeSearchText(verses[vi]);
+
+        // Match partial words: "lov" can find "love", "loved", etc.
+        if (terms.every(term => text.includes(term))) {
+          addResult(book, ci + 1, vi + 1, verses[vi]);
+          count++;
+
+          if (count >= MAX_RESULTS) break outer;
         }
       }
     }
   }
 
   if (count === 0) {
-    host.innerHTML =
-      '<p class="muted">No matches found. Try another word or verse reference.</p>';
-  } else {
     const message = document.createElement('p');
     message.className = 'muted';
     message.textContent =
-      `Showing ${count}${count === 250 ? '+' : ''} result(s).`;
-
-    host.prepend(message);
+      'No matches found. Try another word, such as love, or a reference like John 3:16.';
+    host.append(message);
+  } else {
+    showSearchCount(host, count, count >= MAX_RESULTS);
   }
+}
+
+function showSearchCount(host, count, limited = false) {
+  const message = document.createElement('p');
+  message.className = 'muted';
+  message.textContent = limited
+    ? `Showing the first ${count} results. Refine your search for more specific matches.`
+    : `Found ${count} result(s).`;
+
+  host.prepend(message);
 }
 function addResult(b,ch,v,text){const d=document.createElement('div');d.className='result-item';d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;$('resultsList').append(d)}
 $('resultsList').addEventListener('click',e=>{const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const p=parseBibleReference(o.dataset.ref);if(p&&!p.invalid){navigateRef(p.book.name,p.chapter);setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100)}}if(s){const p=parseBibleReference(s.dataset.save);if(p&&!p.invalid)addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1])}});
@@ -200,9 +222,15 @@ $('searchBtn').addEventListener('click', doSearch);
 
 $('searchInput').addEventListener('input', () => {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(doSearch, 120);
+  searchTimer = setTimeout(doSearch, 150);
 });
 
+$('searchInput').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    clearTimeout(searchTimer);
+    doSearch();
+  }
+});
 $('searchInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     clearTimeout(searchTimer);
