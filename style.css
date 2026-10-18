@@ -1,1 +1,40 @@
 :root{--bg:#f4f6f1;--card:#fff;--ink:#202923;--muted:#66736a;--green:#173d32;--accent:#d8ad63;--line:#e1e7df;--verse:#f7f8f4;--shadow:0 8px 26px #19382a0c}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}.topbar{background:var(--green);color:#fff;padding:15px max(18px,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:12px}.brand h1{font-size:1.25rem;margin:0}.brand p{margin:0;font-size:.8rem;color:#d6e3dc}.cross{font-size:2rem;color:var(--accent)}button,select,input{font:inherit}button{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:9px 13px;cursor:pointer;color:var(--ink)}button:hover{border-color:var(--accent)}button:disabled{opacity:.5;cursor:not-allowed}.iconbtn{background:transparent;color:#fff;border-color:#ffffff55;font-size:1.2rem}main{max-width:1100px;margin:auto;padding:22px 16px 45px}.hero{padding:22px 4px 16px}.eyebrow{letter-spacing:.18em;color:#9a7437;font-weight:750;font-size:.75rem}.hero h2{font-size:clamp(1.6rem,4vw,2.6rem);line-height:1.15;margin:.3rem 0}.hero p:last-child{color:var(--muted);margin-bottom:0}.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0;box-shadow:var(--shadow)}.controls{display:grid;grid-template-columns:1fr 2fr 1fr 1.5fr;gap:12px}.field label{display:block;font-size:.8rem;color:var(--muted);font-weight:650;margin-bottom:5px}.field select{width:100%}select,input{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px;min-width:0}.searchrow{display:flex;gap:8px}.searchrow input{flex:1}.primary{background:var(--green);color:white;border-color:var(--green)}.toolrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.reader h2{font-family:Georgia,serif;font-size:1.9rem;margin:0}.reader .subhead{color:var(--muted);margin:0 0 14px}.verse{padding:10px 12px;border-radius:9px;margin:4px 0;background:var(--verse);display:flex;gap:12px;align-items:flex-start}.vnum{color:#9a7437;font-size:.78rem;font-weight:800;min-width:22px;padding-top:3px}.vtext{flex:1;font-family:Georgia,'Times New Roman',serif;font-size:1.15rem;line-height:1.85}.verseActions{display:flex;gap:4px;flex-wrap:wrap}.verseActions button{padding:3px 7px;font-size:.78rem}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.sectionhead h2{font-size:1.15rem;margin:0}.extras{display:grid;grid-template-columns:1fr 1fr;gap:14px}.extras .panel{margin:0}.bookmark-item,.result-item{border-top:1px solid var(--line);padding:10px 0}.bookmark-item button,.result-item button{margin-right:5px}.muted{color:var(--muted)}.hidden{display:none!important}.empty{text-align:center;padding:45px 10px;color:var(--muted)}.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite;margin:auto}@keyframes spin{to{transform:rotate(360deg)}}blockquote{font-family:Georgia,serif;font-size:1.2rem;border-left:3px solid var(--accent);padding-left:14px;margin:15px 0}footer{font-size:.8rem;color:var(--muted);padding:20px 4px}.error{color:#a12d2d;background:#fff2f0;padding:12px;border-radius:10px}.pill{display:inline-block;font-size:.72rem;border:1px solid var(--line);border-radius:99px;padding:2px 8px;color:var(--muted)}body.dark{--bg:#111a16;--card:#1b2821;--ink:#e8eee9;--muted:#aab8ae;--green:#0d2c23;--line:#314138;--verse:#202f27;--shadow:0 8px 26px #0002}body.dark .error{background:#3a2524;color:#ffb9b3}@media(max-width:760px){.controls{grid-template-columns:1fr 1fr}.extras{grid-template-columns:1fr}.panel{padding:14px}.toolrow button{flex:1 1 auto}.verse{gap:7px}.vtext{font-size:1.08rem}}@media(max-width:420px){.controls{grid-template-columns:1fr}.searchrow{flex-wrap:wrap}.searchrow input{flex-basis:100%}}
+/* Bible search results visibility fix */
+#searchResults:not(.hidden) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  max-height: 70vh;
+  overflow-y: auto;
+  position: relative;
+  z-index: 10;
+}
+
+#resultsList {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 1px;
+}
+
+#resultsList .result-item {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--ink);
+  padding: 14px 0;
+  overflow-wrap: anywhere;
+}
+
+#resultsList .result-item p {
+  display: block !important;
+  color: var(--ink);
+  margin: 6px 0 10px;
+  line-height: 1.6;
+}
+
+#resultsList .result-item button {
+  display: inline-block !important;
+  visibility: visible !important;
+}
