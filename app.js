@@ -29,15 +29,6 @@ function fullBookName(name,index){
 
 const state={books:[],bookIndex:0,chapter:1,font:1.15,bible:null,bookmarks:[],currentVerses:[]};
 const DB_NAME='holy-bible-db', DB_STORE='cache';
-function normalizeSearchText(value) {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ');
-}
 const bookSelect=$('bookSelect'), chapterSelect=$('chapterSelect'), reader=$('reader');
 function openDB(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return resolve(null);const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(DB_STORE);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 async function dbGet(key){try{const db=await openDB();if(!db)return null;return await new Promise((res,rej)=>{const r=db.transaction(DB_STORE).objectStore(DB_STORE).get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}catch{return null}}
@@ -233,7 +224,9 @@ bookSelect.addEventListener('change',()=>{state.bookIndex=+bookSelect.value;stat
 chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;renderChapter()});
 $('testament').addEventListener('change',renderBookOptions);
 $('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
+
 let searchTimer = null;
+
 const searchButton = document.getElementById('searchBtn');
 const searchField = document.getElementById('searchInput');
 
@@ -241,13 +234,13 @@ if (searchButton && searchField) {
   searchButton.addEventListener('click', doSearch);
 
   searchField.addEventListener('input', () => {
-    clearTimeout(searcherTimer);
-    searcherTimer = setTimeout(doSearch, 150);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 150);
   });
 
   searchField.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
-      clearTimeout(searcherTimer);
+      clearTimeout(searchTimer);
       doSearch();
     }
   });
