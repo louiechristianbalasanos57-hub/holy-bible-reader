@@ -92,16 +92,126 @@ function saveBookmarks(){localStorage.setItem('holyBibleBookmarks',JSON.stringif
 function addBookmark(reference,text){if(state.bookmarks.some(b=>b.reference===reference)){alert('This verse is already bookmarked.');return}state.bookmarks.unshift({reference,text});saveBookmarks()}
 function renderBookmarks(){const host=$('bookmarkList');if(!host)return;if(!state.bookmarks.length){host.innerHTML='<p class="muted">Saved verses will appear here.</p>';return}host.innerHTML='';state.bookmarks.forEach((b,i)=>{const d=document.createElement('div');d.className='bookmark-item';d.innerHTML=`<b>${escapeHTML(b.reference)}</b><p>${escapeHTML(cleanText(b.text))}</p><button data-open="${escapeHTML(b.reference)}">Open</button><button data-remove="${i}">Remove</button>`;host.append(d)});host.onclick=e=>{const o=e.target.closest('[data-open]');const r=e.target.closest('[data-remove]');if(o){const m=o.dataset.open.match(/^(.*?)\s+(\d+):(\d+)$/);if(m){navigateRef(m[1],Number(m[2]));setTimeout(()=>document.getElementById('v'+m[3])?.scrollIntoView({behavior:'smooth'}),100)}}if(r){state.bookmarks.splice(Number(r.dataset.remove),1);saveBookmarks()}}}
 function renderDaily(){if(!state.books.length)return;const seed=new Date().getDate()+new Date().getMonth()*31;const b=state.books[(seed*7)%state.books.length];const ch=(seed*3)%b.chapters.length;const v=(seed*11)%b.chapters[ch].length;state.daily={reference:ref(b.name,ch+1,v+1),text:b.chapters[ch][v]};$('dailyVerse').textContent=state.daily.reference+' — '+cleanText(state.daily.text)}
-function doSearch(){const q=$('searchInput').value.trim();if(!q)return;const host=$('resultsList');host.innerHTML='';$('searchResults').classList.remove('hidden');let count=0;const reference=q.match(/^(.+?)\s+(\d+):(\d+)$/);if(reference){const b=state.books.find(x=>x.name.toLowerCase()===reference[1].toLowerCase());if(b&&b.chapters[+reference[2]-1]?.[+reference[3]-1]){addResult(b,+reference[2],+reference[3],b.chapters[+reference[2]-1][+reference[3]-1]);count++}}
- else {const terms=q.toLowerCase().split(/\s+/);for(const b of state.books){for(let ci=0;ci<b.chapters.length;ci++){const vs=b.chapters[ci];for(let vi=0;vi<vs.length;vi++){const t=cleanText(vs[vi]);if(terms.every(term=>t.toLowerCase().includes(term))){addResult(b,ci+1,vi+1,vs[vi]);if(++count>=250)break}}if(count>=250)break}if(count>=250)break}}
- if(!count)host.innerHTML='<p class="muted">No matches found. Try fewer words or a reference like John 3:16.</p>';else{const p=document.createElement('p');p.className='muted';p.textContent=`Showing ${count}${count===250?'+':''} result(s).`;host.prepend(p)}}
+function parseBibleReference(query){
+ const q=query.trim().replace(/\s+/g,' ');
+ // Match full book names and common abbreviations, then chapter:verse (also chapter:verse-verse).
+ const m=q.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?$/i);
+ if(!m)return null;
+ const typed=m[1].toLowerCase().replace(/\./g,'').trim();
+ const aliases={"gen":"Genesis","ge":"Genesis","gn":"Genesis","exo":"Exodus","ex":"Exodus","lev":"Leviticus","num":"Numbers","deut":"Deuteronomy","ps":"Psalms","psalm":"Psalms","psalms":"Psalms","prov":"Proverbs","matt":"Matthew","mt":"Matthew","mk":"Mark","lk":"Luke","jn":"John","jhn":"John","rom":"Romans","1 cor":"1 Corinthians","2 cor":"2 Corinthians","1 thess":"1 Thessalonians","2 thess":"2 Thessalonians","1 tim":"1 Timothy","2 tim":"2 Timothy","phlm":"Philemon","philem":"Philemon","rev":"Revelation"};
+ const bookName=aliases[typed]||state.books.find(b=>b.name.toLowerCase()===typed)?.name;
+ if(!bookName)return {invalid:true};
+ const book=state.books.find(b=>b.name.toLowerCase()===bookName.toLowerCase());
+ if(!book)return {invalid:true};
+ const ch=Number(m[2]),v=Number(m[3]),vEnd=Number(m[4]||m[3]);
+ if(ch<1||ch>book.chapters.length||v<1||vEnd<v||vEnd>(book.chapters[ch-1]||[]).length)return {invalid:true};
+ return {book,chapter:ch,verse:v,verseEnd:vEnd};
+}
+function normalizeSearchText(value){
+ return cleanText(String(value||""))
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
+  .replace(/\s+/g," ").trim();
+}
+
+let searchTimer = null;
+
+function doSearch() {
+  const q = $('searchInput').value.trim();
+  const host = $('resultsList');
+  const panel = $('searchResults');
+
+  if (!q) {
+    host.innerHTML = '';
+    panel.classList.add('hidden');
+    return;
+  }
+
+  host.innerHTML = '';
+  panel.classList.remove('hidden');
+
+  let count = 0;
+
+  // Search for a verse reference, such as John 3:16.
+  const reference = q.match(/^(.+?)\s+(\d+):(\d+)$/i);
+
+  if (reference) {
+    const bookName = reference[1].trim().toLowerCase();
+    const book = state.books.find(
+      b => b.name.toLowerCase() === bookName
+    );
+
+    const chapter = Number(reference[2]);
+    const verse = Number(reference[3]);
+
+    if (
+      book &&
+      book.chapters[chapter - 1] &&
+      book.chapters[chapter - 1][verse - 1] !== undefined
+    ) {
+      addResult(
+        book,
+        chapter,
+        verse,
+        book.chapters[chapter - 1][verse - 1]
+      );
+      count++;
+    }
+  } else {
+    // Partial-word search across all Bible books.
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+
+    outer:
+    for (const book of state.books) {
+      for (let ci = 0; ci < book.chapters.length; ci++) {
+        const verses = book.chapters[ci];
+
+        for (let vi = 0; vi < verses.length; vi++) {
+          const verseText = cleanText(verses[vi]).toLowerCase();
+
+          if (terms.every(term => verseText.includes(term))) {
+            addResult(book, ci + 1, vi + 1, verses[vi]);
+            count++;
+
+            if (count >= 250) break outer;
+          }
+        }
+      }
+    }
+  }
+
+  if (count === 0) {
+    host.innerHTML =
+      '<p class="muted">No matches found. Try another word or verse reference.</p>';
+  } else {
+    const message = document.createElement('p');
+    message.className = 'muted';
+    message.textContent =
+      `Showing ${count}${count === 250 ? '+' : ''} result(s).`;
+
+    host.prepend(message);
+  }
+}
 function addResult(b,ch,v,text){const d=document.createElement('div');d.className='result-item';d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;$('resultsList').append(d)}
-$('resultsList').addEventListener('click',e=>{const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const m=o.dataset.ref.match(/^(.*?)\s+(\d+):(\d+)$/);navigateRef(m[1],+m[2]);setTimeout(()=>document.getElementById('v'+m[3])?.scrollIntoView({behavior:'smooth'}),100)}if(s){const m=s.dataset.save.match(/^(.*?)\s+(\d+):(\d+)$/);const b=state.books.find(x=>x.name===m[1]);addBookmark(s.dataset.save,b.chapters[+m[2]-1][+m[3]-1])}});
+$('resultsList').addEventListener('click',e=>{const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const p=parseBibleReference(o.dataset.ref);if(p&&!p.invalid){navigateRef(p.book.name,p.chapter);setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100)}}if(s){const p=parseBibleReference(s.dataset.save);if(p&&!p.invalid)addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1])}});
 bookSelect.addEventListener('change',()=>{state.bookIndex=+bookSelect.value;state.chapter=1;renderChapters();renderChapter()});
 chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;renderChapter()});
 $('testament').addEventListener('change',renderBookOptions);
 $('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
-$('searchBtn').addEventListener('click',doSearch);$('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
+
+$('searchBtn').addEventListener('click', doSearch);
+
+$('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 120);
+});
+
+$('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimer);
+    doSearch();
+  }
+});
 $('closeResults').addEventListener('click',()=>$('searchResults').classList.add('hidden'));
 $('fontUp').addEventListener('click',()=>{state.font=Math.min(1.8,state.font+.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
 $('fontDown').addEventListener('click',()=>{state.font=Math.max(.85,state.font-.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
