@@ -28,7 +28,6 @@ function fullBookName(name,index){
 }
 
 const state={books:[],bookIndex:0,chapter:1,font:1.15,bible:null,bookmarks:[],currentVerses:[]};
-let searchTimer = null;
 const DB_NAME='holy-bible-db', DB_STORE='cache';
 function normalizeSearchText(value) {
   return String(value ?? '')
@@ -234,7 +233,7 @@ bookSelect.addEventListener('change',()=>{state.bookIndex=+bookSelect.value;stat
 chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;renderChapter()});
 $('testament').addEventListener('change',renderBookOptions);
 $('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
-
+let searchTimer = null;
 const searchButton = document.getElementById('searchBtn');
 const searchField = document.getElementById('searchInput');
 
