@@ -68,7 +68,7 @@ async function loadBible(){
 function initReader(){
  bookSelect.innerHTML='';renderBookOptions();bookSelect.disabled=false;$('testament').disabled=false;chapterSelect.disabled=false;
  const saved=localStorage.getItem('holyBibleLocation');if(saved){try{const x=JSON.parse(saved);const i=state.books.findIndex(b=>b.name===x.book);if(i>=0){state.bookIndex=i;state.chapter=x.chapter||1}}catch{}}
- loadBookmarks();renderBookOptions();renderChapters();renderChapter();renderDaily();
+ loadBookmarks();renderBookOptions();renderChapters();renderChapter();renderDaily();fillTestamentCard('oldBook','oldChapter','OT');fillTestamentCard('newBook','newChapter','NT');
  if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 function renderBookOptions(){const filter=$('testament').value;bookSelect.innerHTML='';state.books.forEach((b,i)=>{if(filter!=='all'&&b.testament!==filter)return;const o=document.createElement('option');o.value=i;o.textContent=(b.testament==='OT'?'OT · ':'NT · ')+b.name;bookSelect.append(o)});if(!bookSelect.options.length)return;const current=[...bookSelect.options].some(o=>Number(o.value)===state.bookIndex);if(!current)state.bookIndex=Number(bookSelect.options[0].value);bookSelect.value=String(state.bookIndex)}
@@ -107,143 +107,114 @@ function parseBibleReference(query){
  if(ch<1||ch>book.chapters.length||v<1||vEnd<v||vEnd>(book.chapters[ch-1]||[]).length)return {invalid:true};
  return {book,chapter:ch,verse:v,verseEnd:vEnd};
 }
-function normalizeSearchText(value) {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ');
+function normalizeSearchText(value){
+ return cleanText(String(value||""))
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .toLowerCase().replace(/[^\p{L}\p{N}\s:]/gu," ")
+  .replace(/\s+/g," ").trim();
 }
+
+let searchTimer = null;
+let activeSearchTestament = 'all';
 function doSearch() {
-  const input = $('searchInput');
-  const host = $('resultsList');
-  const panel = $('searchResults');
+  const raw = $('searchInput').value || '';
+  const q = normalizeSearchText(raw);
+  const inlineMode = activeSearchTestament === 'OT' || activeSearchTestament === 'NT';
+  const host = inlineMode
+    ? $(activeSearchTestament === 'OT' ? 'oldInlineResults' : 'newInlineResults')
+    : $('resultsList');
+  const panel = inlineMode
+    ? host
+    : $('searchResults');
 
-  if (!input || !host || !panel) {
-    console.error('Search HTML elements are missing.');
-    return;
-  }
-
-  const query = input.value.trim();
-  host.replaceChildren();
-
-  if (!query) {
+  host.innerHTML = '';
+  if (!q) {
     panel.classList.add('hidden');
     return;
   }
 
   panel.classList.remove('hidden');
-
-  if (!state.books || state.books.length === 0) {
-    host.textContent = 'Please wait. The Bible text is still loading.';
-    return;
-  }
-
-  // Open a Bible reference, such as John 3:16.
-  const parsed = parseBibleReference(query);
-
-if (parsed?.invalid) {
-  host.textContent = 'Invalid Bible reference. Check the book, chapter, and verse.';
-  return;
-}
-
-if (parsed && !parsed.invalid) {
-    const start = parsed.verse;
-    const end = parsed.verseEnd || start;
-
-    for (let verse = start; verse <= end; verse++) {
-      addResult(
-        parsed.book,
-        parsed.chapter,
-        verse,
-        parsed.book.chapters[parsed.chapter - 1][verse - 1]
-      );
-    }
-
-    showSearchCount(host, end - start + 1);
-    return;
-  }
-
-  // Normalize the query and Bible text for partial-word matching.
-  const normalizedQuery = normalizeSearchText(query);
-
-  if (!normalizedQuery) {
-    panel.classList.add('hidden');
-    return;
-  }
-
-  const terms = normalizedQuery.split(/\s+/);
   let count = 0;
-  const MAX_RESULTS = 100;
+  const maxResults = 250;
+  const eligibleBooks = state.books.filter(b =>
+    activeSearchTestament === 'all' || b.testament === activeSearchTestament
+  );
 
-  outer:
-  for (const book of state.books) {
-    for (let ci = 0; ci < book.chapters.length; ci++) {
-      const verses = book.chapters[ci];
-
-      for (let vi = 0; vi < verses.length; vi++) {
-        const text = normalizeSearchText(verses[vi]);
-
-        // Match partial words: "lov" can find "love", "loved", etc.
-        if (terms.every(term => text.includes(term))) {
-          addResult(book, ci + 1, vi + 1, verses[vi]);
-          count++;
-
-          if (count >= MAX_RESULTS) break outer;
+  const parsed = parseBibleReference(raw);
+  if (parsed && !parsed.invalid &&
+      (activeSearchTestament === 'all' || parsed.book.testament === activeSearchTestament)) {
+    const verses = parsed.book.chapters[parsed.chapter - 1] || [];
+    for (let v = parsed.verse; v <= parsed.verseEnd; v++) {
+      addResult(parsed.book, parsed.chapter, v, verses[v - 1], host);
+      count++;
+    }
+  } else {
+    const terms = q.split(/\s+/).filter(Boolean);
+    outer:
+    for (const book of eligibleBooks) {
+      for (let ci = 0; ci < book.chapters.length; ci++) {
+        const verses = book.chapters[ci];
+        for (let vi = 0; vi < verses.length; vi++) {
+          const verseText = normalizeSearchText(verses[vi]);
+          if (terms.every(term => verseText.includes(term))) {
+            addResult(book, ci + 1, vi + 1, verses[vi], host);
+            count++;
+            if (count >= maxResults) break outer;
+          }
         }
       }
     }
   }
 
-  if (count === 0) {
-    const message = document.createElement('p');
-    message.className = 'muted';
-    message.textContent =
-      'No matches found. Try another word, such as love, or a reference like John 3:16.';
-    host.append(message);
+  if (!count) {
+    host.innerHTML = '<p class="muted">No matches found. Try “love”, “lov”, or a reference such as “John 3:16”.</p>';
   } else {
-    showSearchCount(host, count, count >= MAX_RESULTS);
+    const message = document.createElement('p');
+    message.className = 'muted result-count';
+    message.textContent = `Showing ${count}${count === maxResults ? '+' : ''} result(s).`;
+    host.prepend(message);
   }
+
+  // Results for each testament appear immediately under that testament's search bar.
+  if (!inlineMode) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function showSearchCount(host, count, limited = false) {
-  const message = document.createElement('p');
-  message.className = 'muted';
-  message.textContent = limited
-    ? `Showing the first ${count} results. Refine your search for more specific matches.`
-    : `Found ${count} result(s).`;
-
-  host.prepend(message);
-}
-function addResult(b,ch,v,text){const d=document.createElement('div');d.className='result-item';d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;$('resultsList').append(d)}
-$('resultsList').addEventListener('click',e=>{const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const p=parseBibleReference(o.dataset.ref);if(p&&!p.invalid){navigateRef(p.book.name,p.chapter);setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100)}}if(s){const p=parseBibleReference(s.dataset.save);if(p&&!p.invalid)addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1])}});
+function addResult(b,ch,v,text,host=$('resultsList')){const d=document.createElement('div');d.className='result-item';d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;host.append(d)}
+function handleResultClick(e){const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const p=parseBibleReference(o.dataset.ref);if(p&&!p.invalid){navigateRef(p.book.name,p.chapter);setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100)}}if(s){const p=parseBibleReference(s.dataset.save);if(p&&!p.invalid)addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1])}}
+$('resultsList').addEventListener('click',handleResultClick);
+$('oldInlineResults').addEventListener('click',handleResultClick);
+$('newInlineResults').addEventListener('click',handleResultClick);
 bookSelect.addEventListener('change',()=>{state.bookIndex=+bookSelect.value;state.chapter=1;renderChapters();renderChapter()});
 chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;renderChapter()});
 $('testament').addEventListener('change',renderBookOptions);
 $('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
 
-let searchTimer = null;
-
-const searchButton = document.getElementById('searchBtn');
-const searchField = document.getElementById('searchInput');
-
-if (searchButton && searchField) {
-  searchButton.addEventListener('click', doSearch);
-
-  searchField.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(doSearch, 150);
-  });
-
-  searchField.addEventListener('keydown', event => {
-    if (event.key === 'Enter') {
-      clearTimeout(searchTimer);
-      doSearch();
-    }
-  });
+function fillTestamentCard(bookId, chapterId, testament) {
+ const sel=$(bookId), ch=$(chapterId); if(!sel||!ch)return; sel.disabled=false; ch.disabled=false; sel.innerHTML='';
+ state.books.forEach((b,i)=>{if(b.testament===testament){const o=document.createElement('option');o.value=i;o.textContent=b.name;sel.append(o);}});
+ const first=state.books.findIndex(b=>b.testament===testament); sel.value=String(state.books[state.bookIndex]?.testament===testament?state.bookIndex:first);
+ function fillChapters(){const b=state.books[Number(sel.value)];ch.innerHTML='';if(b)b.chapters.forEach((_,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=String(i+1);ch.append(o);});}
+ fillChapters(); sel.addEventListener('change',fillChapters);
 }
+function wireCard(prefix,testament){
+ const input=$(prefix+'Search'), btn=$(prefix+'SearchBtn'); const run=()=>{$('searchInput').value=input.value;activeSearchTestament=testament;doSearch();};
+ input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(run,150);});input.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(searchTimer);run();}});btn.addEventListener('click',run);
+ $(prefix+'Browse').addEventListener('click',()=>{const b=Number($(prefix+'Book').value),c=Number($(prefix+'Chapter').value||1);state.bookIndex=b;state.chapter=c;$('testament').value=testament;renderBookOptions();renderChapters();renderChapter();$('reader').classList.remove('hidden');$('reader').scrollIntoView({behavior:'smooth',block:'start'});});
+}
+wireCard('old','OT');wireCard('new','NT');
+$('searchBtn').addEventListener('click', doSearch);
+
+$('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 120);
+});
+
+$('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimer);
+    doSearch();
+  }
+});
 $('closeResults').addEventListener('click',()=>$('searchResults').classList.add('hidden'));
 $('fontUp').addEventListener('click',()=>{state.font=Math.min(1.8,state.font+.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
 $('fontDown').addEventListener('click',()=>{state.font=Math.max(.85,state.font-.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
