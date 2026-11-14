@@ -1,4 +1,14 @@
 /* Holy Bible reader. Full KJV corpus is fetched once and persisted in IndexedDB for offline reading. */
+// Supabase authentication configuration
+const SUPABASE_URL = 'https://giwnjovmhudciswelkwx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_BNGJARWU3EifJ02dCcfGwg_9Q2v5n4v';
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+let authMode = 'login';
 const DATA_URLS=[
  'https://raw.githubusercontent.com/midvash/bible-data/main/versions/en/kjv/kjv.json',
  'https://raw.githubusercontent.com/aruljohn/Bible-kjv/master/kjv.json'
@@ -226,3 +236,159 @@ $('dailyBtn').addEventListener('click',()=>{const b=state.books[Math.floor(Math.
 $('saveDaily').addEventListener('click',()=>state.daily&&addBookmark(state.daily.reference,state.daily.text));
 if(localStorage.getItem('holyBibleDark')==='true')document.body.classList.add('dark');
 loadBible();
+// ===============================
+// SUPABASE LOGIN AND SIGN UP
+// ===============================
+
+const authSection = $('authSection');
+const authForm = $('authForm');
+const authMessage = $('authMessage');
+const authSwitch = $('authSwitch');
+
+function showAuthMessage(message, isError = false) {
+  authMessage.textContent = message;
+  authMessage.style.color = isError ? '#c0392b' : 'var(--green)';
+}
+
+function updateAuthScreen(session) {
+  const signedIn = !!session;
+
+  // Hide Bible content until the user is signed in.
+  document.querySelectorAll('main > :not(#authSection)').forEach(element => {
+    element.classList.toggle('hidden', !signedIn);
+  });
+
+  authSection.classList.toggle('hidden', signedIn);
+
+  let logoutButton = $('logoutButton');
+
+  if (signedIn) {
+    if (!logoutButton) {
+      logoutButton = document.createElement('button');
+      logoutButton.id = 'logoutButton';
+      logoutButton.textContent = 'Log Out';
+      logoutButton.style.marginLeft = '10px';
+      $('themeBtn').insertAdjacentElement('beforebegin', logoutButton);
+
+      logoutButton.addEventListener('click', async () => {
+        const { error } = await supabaseClient.auth.signOut();
+
+        if (error) {
+          alert(error.message);
+        }
+      });
+    }
+
+    logoutButton.classList.remove('hidden');
+  } else if (logoutButton) {
+    logoutButton.classList.add('hidden');
+  }
+}
+
+function switchAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+
+  $('authTitle').textContent =
+    authMode === 'login' ? 'Welcome Back' : 'Create Your Account';
+
+  $('authDescription').textContent =
+    authMode === 'login'
+      ? 'Sign in to your Holy Bible account.'
+      : 'Register to access your Holy Bible account.';
+
+  $('authSubmit').textContent =
+    authMode === 'login' ? 'Log In' : 'Create Account';
+
+  $('authSwitchText').textContent =
+    authMode === 'login'
+      ? "Don't have an account?"
+      : 'Already have an account?';
+
+  authSwitch.textContent =
+    authMode === 'login' ? 'Sign Up' : 'Log In';
+
+  showAuthMessage('');
+}
+
+authSwitch.addEventListener('click', switchAuthMode);
+
+authForm.addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const email = $('authEmail').value.trim();
+  const password = $('authPassword').value;
+
+  $('authSubmit').disabled = true;
+  showAuthMessage('Please wait...');
+
+  try {
+    if (authMode === 'signup') {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.session) {
+        showAuthMessage('Account created successfully!');
+      } else {
+        showAuthMessage(
+          'Account created! Please check your email and confirm your account before logging in.'
+        );
+      }
+    } else {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      showAuthMessage('Login successful!');
+    }
+  } catch (error) {
+    showAuthMessage(error.message || 'Authentication failed.', true);
+  } finally {
+    $('authSubmit').disabled = false;
+  }
+});
+
+$('googleLogin').addEventListener('click', async () => {
+  showAuthMessage('Connecting to Google...');
+
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname
+    }
+  });
+
+  if (error) {
+    showAuthMessage(
+      'Google Login is not configured yet: ' + error.message,
+      true
+    );
+  }
+});
+
+async function initializeAuthentication() {
+  const { data, error } = await supabaseClient.auth.getSession();
+
+  if (error) {
+    showAuthMessage(error.message, true);
+    updateAuthScreen(null);
+    return;
+  }
+
+  updateAuthScreen(data.session);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    updateAuthScreen(session);
+  });
+}
+
+initializeAuthentication();

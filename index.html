@@ -1,5 +1,32 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#173d32"><meta name="description" content="Holy Bible with separate Old and New Testament sections."><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"><title>Holy Bible — Scriptures</title></head><body>
-<header class="topbar"><div class="brand"><span class="cross">✝</span><div><h1>Holy Bible</h1><p>Read • Search • Reflect</p></div></div><button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button></header><main>
+<header class="topbar"><div class="brand"><span class="cross">✝</span><div><h1>Holy Bible</h1><p>Read • Search • Reflect</p></div></div><button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button></header><main><section id="authSection" class="auth-section">
+  <div class="auth-card">
+    <div class="auth-heading">
+      <span class="cross">✝</span>
+      <h2 id="authTitle">Welcome Back</h2>
+      <p id="authDescription">Sign in to your Holy Bible account.</p>
+    </div>
+
+    <form id="authForm">
+      <label for="authEmail">Email Address</label>
+      <input id="authEmail" type="email" placeholder="Enter your email" required>
+
+      <label for="authPassword">Password</label>
+      <input id="authPassword" type="password" placeholder="Enter your password" minlength="6" required>
+
+      <button id="authSubmit" class="primary" type="submit">Log In</button>
+    </form>
+
+    <button id="googleLogin" type="button">Continue with Google</button>
+
+    <p id="authMessage" role="status"></p>
+
+    <p class="auth-switch">
+      <span id="authSwitchText">Don't have an account?</span>
+      <button id="authSwitch" type="button">Sign Up</button>
+    </p>
+  </div>
+</section>
 <section class="hero"><p class="eyebrow">YOUR DAILY SCRIPTURE</p><h2>Find wisdom in every chapter.</h2><p id="status" role="status">Loading Bible text… first launch needs internet. It will be saved for offline reading.</p></section>
 <section class="testament-grid">
 <article class="testament-card old-card"><div class="card-art old-art"><div class="logo old-logo"><span>✡</span><small>OLD TESTAMENT</small></div><div><p class="eyebrow">39 BOOKS</p><h2>Old Testament</h2><p>The Law • History • Psalms • Prophets</p><small>Explore Genesis to Malachi.</small></div></div><div class="card-controls"><div class="field"><label for="oldBook">Book</label><select id="oldBook" disabled><option>Loading…</option></select></div><div class="field"><label for="oldChapter">Chapter</label><select id="oldChapter" disabled><option>1</option></select></div><div class="field translation"><label>Translation</label><div class="static">King James Version (KJV)</div></div><div class="card-search"><input id="oldSearch" type="search" placeholder="Search in Old Testament…" aria-label="Search in Old Testament"><button id="oldSearchBtn" class="primary">Search</button></div>
@@ -11,4 +38,5 @@
 <section id="searchResults" class="panel results hidden"><div class="sectionhead"><h2>Search results</h2><button id="closeResults">Close</button></div><div id="resultsList"></div></section>
 <section class="extras"><article class="panel"><div class="sectionhead"><h2>🔖 Bookmarks</h2><button id="clearBookmarks">Clear</button></div><div id="bookmarkList"><p class="muted">Saved verses will appear here.</p></div></article><article class="panel"><div class="sectionhead"><h2>🌿 Daily verse</h2><button id="dailyBtn">New verse</button></div><blockquote id="dailyVerse">Loading a verse…</blockquote><button id="saveDaily">Save daily verse</button></article></section>
 <footer><p>Text: King James Version (public domain in the United States). Other translations may have different copyright terms.</p><p>For offline use, open once while online, allow Bible data to finish loading, then revisit this site.</p></footer>
-<div class="legacy"><select id="testament"><option value="all">All books</option><option value="OT">Old Testament</option><option value="NT">New Testament</option></select><select id="bookSelect" disabled></select><select id="chapterSelect" disabled></select><select id="versionSelect"><option value="KJV">KJV</option></select><input id="searchInput"><button id="searchBtn">Search</button></div></main><script src="app.js"></script></body></html>
+<div class="legacy"><select id="testament"><option value="all">All books</option><option value="OT">Old Testament</option><option value="NT">New Testament</option></select><select id="bookSelect" disabled></select><select id="chapterSelect" disabled></select><select id="versionSelect"><option value="KJV">KJV</option></select><input id="searchInput"><button id="searchBtn">Search</button></div></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script></body></html>

@@ -6,3 +6,86 @@
 .inline-results .result-item p{margin:5px 0 9px}
 .inline-results .result-item b{color:var(--green)}
 .new-card .inline-results .result-item b{color:var(--blue)}
+/* Supabase authentication */
+.auth-section {
+  min-height: 65vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 35px 15px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 430px;
+  padding: 30px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.auth-heading {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-heading .cross {
+  display: block;
+}
+
+.auth-heading h2 {
+  margin: 8px 0 4px;
+  font-family: Georgia, serif;
+}
+
+.auth-heading p,
+.auth-switch {
+  color: var(--muted);
+}
+
+#authForm {
+  display: grid;
+  gap: 10px;
+}
+
+#authForm label {
+  font-weight: 650;
+  font-size: .9rem;
+}
+
+#authForm input {
+  margin-bottom: 8px;
+}
+
+#authSubmit,
+#googleLogin {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+}
+
+#googleLogin {
+  border: 1px solid var(--line);
+}
+
+#authMessage {
+  min-height: 24px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.auth-switch {
+  text-align: center;
+}
+
+.auth-switch button {
+  color: var(--green);
+  border: 0;
+  background: transparent;
+  font-weight: 750;
+}
+
+body.dark .auth-switch button {
+  color: #b9d9c8;
+}
