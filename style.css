@@ -392,3 +392,6 @@ body.dark .auth-heading h2 {
     padding: 17px;
   }
 }
+body {
+    outline: 6px solid red !important;
+}
