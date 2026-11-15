@@ -16,10 +16,10 @@ const DATA_URLS=[
 const $=id=>document.getElementById(id);
 
 const CANONICAL_BOOKS = [
-"Genesis","Exodus","Leviticus","Moises","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi",
+"Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi",
 "Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"];
 const BOOK_ALIASES = {
-"gen":"Genesis","ge":"Genesis","gn":"Genesis","exo":"Exodus","ex":"Exodus","lev":"Leviticus","lv":"Leviticus","num":"Moises","nu":"Moises","deut":"Deuteronomy","dt":"Deuteronomy",
+"gen":"Genesis","ge":"Genesis","gn":"Genesis","exo":"Exodus","ex":"Exodus","lev":"Leviticus","lv":"Leviticus","num":"Numbers","nu":"Numbers","deut":"Deuteronomy","dt":"Deuteronomy",
 "ps":"Psalms","psalm":"Psalms","psalms":"Psalms","prov":"Proverbs","pr":"Proverbs","song":"Song of Solomon","song of songs":"Song of Solomon","canticles":"Song of Solomon",
 "mt":"Matthew","matt":"Matthew","mk":"Mark","mr":"Mark","lk":"Luke","lu":"Luke","jn":"John","jhn":"John","acts":"Acts","rom":"Romans","1 cor":"1 Corinthians","2 cor":"2 Corinthians",
 "1 thess":"1 Thessalonians","2 thess":"2 Thessalonians","1 tim":"1 Timothy","2 tim":"2 Timothy","phlm":"Philemon","philem":"Philemon","rev":"Revelation","re":"Revelation"
@@ -407,3 +407,1101 @@ async function initializeAuthentication() {
 }
 
 initializeAuthentication();
+
+// ============================================
+// UNIFIED LANGUAGE AND BIBLE TRANSLATION SYSTEM
+// ============================================
+
+const TRANSLATION_API = 'https://bible.helloao.org/api';
+const UI_TRANSLATION_API = 'https://api.mymemory.translated.net/get';
+
+const languageSelect = $('languageSelect');
+const translationVersionSelect = $('translationVersionSelect');
+const translationStatus = $('translationStatus');
+
+let availableTranslations = [];
+let activeTranslationId = 'LOCAL_KJV';
+let activeTranslationName = 'King James Version (KJV)';
+let currentInterfaceLanguage = 'fil';
+let interfaceTranslationRun = 0;
+
+// Bible API language codes
+const TRANSLATION_LANGUAGES = {
+  waray: ['war', 'waray'],
+  fil: ['tgl', 'fil'],
+  en: ['eng'],
+  es: ['spa'],
+  fr: ['fra', 'fre'],
+  de: ['deu', 'ger'],
+  pt: ['por'],
+  it: ['ita'],
+  zh: ['zho', 'chi'],
+  ja: ['jpn'],
+  ko: ['kor'],
+  ar: ['ara'],
+  id: ['ind'],
+  hi: ['hin'],
+  ru: ['rus'],
+  th: ['tha'],
+  vi: ['vie'],
+  ms: ['msa', 'may'],
+  nl: ['nld', 'dut'],
+  el: ['ell', 'gre'],
+  he: ['heb'],
+  tr: ['tur'],
+  sw: ['swa'],
+  ur: ['urd'],
+  bn: ['ben'],
+  pl: ['pol']
+};
+
+// MyMemory language codes for interface translation
+const UI_LANGUAGE_CODES = {
+  waray: 'war',
+  fil: 'tl',
+  en: 'en',
+  es: 'es',
+  fr: 'fr',
+  de: 'de',
+  pt: 'pt',
+  it: 'it',
+  zh: 'zh-CN',
+  ja: 'ja',
+  ko: 'ko',
+  ar: 'ar',
+  id: 'id',
+  hi: 'hi',
+  ru: 'ru',
+  th: 'th',
+  vi: 'vi',
+  ms: 'ms',
+  nl: 'nl',
+  el: 'el',
+  he: 'he',
+  tr: 'tr',
+  sw: 'sw',
+  ur: 'ur',
+  bn: 'bn',
+  pl: 'pl'
+};
+
+const UI_LANGUAGE_NAMES = {
+  waray: 'Waray-Waray',
+  fil: 'Filipino / Tagalog',
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  pt: 'Portuguese',
+  it: 'Italian',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  ar: 'Arabic',
+  id: 'Indonesian',
+  hi: 'Hindi',
+  ru: 'Russian',
+  th: 'Thai',
+  vi: 'Vietnamese',
+  ms: 'Malay',
+  nl: 'Dutch',
+  el: 'Greek',
+  he: 'Hebrew',
+  tr: 'Turkish',
+  sw: 'Swahili',
+  ur: 'Urdu',
+  bn: 'Bengali',
+  pl: 'Polish'
+};
+
+function translationMessage(message) {
+  if (translationStatus) {
+    translationStatus.textContent = message;
+  }
+}
+
+// ============================================
+// INTERFACE TRANSLATION
+// ============================================
+
+const uiOriginalText = new WeakMap();
+const uiTrackedText = new Set();
+
+const uiOriginalAttributes = new WeakMap();
+const uiTrackedElements = new Set();
+
+const UI_SKIP_SELECTOR = [
+  'script',
+  'style',
+  'noscript',
+  'svg',
+  'code',
+  'pre',
+  '.vtext',
+  '.result-item p',
+  '.bookmark-item p',
+  '#dailyVerse'
+].join(',');
+
+function getUiCache(language) {
+  try {
+    return JSON.parse(
+      localStorage.getItem('holyBibleUi_' + language) || '{}'
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveUiCache(language, cache) {
+  try {
+    localStorage.setItem(
+      'holyBibleUi_' + language,
+      JSON.stringify(cache)
+    );
+  } catch (error) {
+    console.warn('UI translation cache unavailable:', error);
+  }
+}
+
+function getUiUsage(language) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem('holyBibleUiUsage_' + language) || '{}'
+    );
+
+    if (saved.date !== today) {
+      return { date: today, characters: 0 };
+    }
+
+    return saved;
+  } catch {
+    return { date: today, characters: 0 };
+  }
+}
+const WARAY_UI_DICTIONARY = {
+  'Holy Bible': 'Baraan nga Biblia',
+  'READ · SEARCH · REFLECT': 'BASA · PAMILING · PAMALANDONG',
+  'YOUR DAILY SCRIPTURE': 'IMO ADLAW-ADLAW NGA KASURATAN',
+  'Find wisdom.': 'Bilnga an kinaadman.',
+  'Discover faith.': 'Hibaroi an pagtoo.',
+  'Grow in His Word.': 'Tubo ha Iya Pulong.',
+  'App Language': 'Yinaknan han Aplikasyon',
+  'Choose the language for the entire Holy Bible app.': 'Pilia an yinaknan para ha bug-os nga aplikasyon han Baraan nga Biblia.',
+  'Select Language': 'Pilia an Yinaknan',
+  'EXPLORE THE SCRIPTURES': 'USISAHA AN KASURATAN',
+  'Choose Your Testament': 'Pilia an Imo Testamento',
+  'Old Testament': 'Daan nga Testamento',
+  'New Testament': 'Bag-o nga Testamento',
+  'Select Book': 'Pilia an Libro',
+  'Chapter': 'Kapitulo',
+  'Search': 'Pamiling',
+  'Search Results': 'Mga Resulta han Pamiling',
+  'Close': 'Isara',
+  'YOUR READING SPACE': 'IMO LUGAR PARA HA PAGBASA',
+  'Read the Word': 'Basaha an Pulong',
+  'READING CONTROLS': 'MGA KONTROL HAN PAGBASA',
+  'Read chapter': 'Basaha an Kapitulo',
+  'Stop audio': 'Undangon an Audio',
+  'Preparing your Bible': 'Gin-aandam an Imo Biblia',
+  'YOUR PERSONAL LIBRARY': 'IMO PERSONAL NGA LIBRARIYA',
+  'Save & Reflect': 'Tipigi ngan Pamalandonga',
+  'Bookmarks': 'Mga Ginmarkahan',
+  'Clear': 'Kuhaa',
+  'Saved verses will appear here.': 'An imo gintipigan nga mga bersikulo makikita dinhi.',
+  'DAILY INSPIRATION': 'ADLAW-ADLAW NGA INSPIRASYON',
+  'Daily Verse': 'Adlaw-adlaw nga Bersikulo',
+  'New verse': 'Bag-o nga Bersikulo',
+  'Save Daily Verse': 'Tipigi an Adlaw-adlaw nga Bersikulo',
+  'Welcome Back': 'Maupay nga Pagbalik',
+  'Create Your Account': 'Paghimo han Imo Account',
+  'Email Address': 'Email Address',
+  'Password': 'Password',
+  'Log In': 'Sulod',
+  'Sign Up': 'Magparehistro',
+  'Continue with Google': 'Padayon pinaagi han Google',
+  'OR': 'O',
+  'Log Out': 'Gawas',
+  'Translation': 'Paghubad',
+  'Browse All Old Testament Books': 'Usisaha an Ngatanan nga Libro han Daan nga Testamento',
+  'Browse All New Testament Books': 'Usisaha an Ngatanan nga Libro han Bag-o nga Testamento'
+};
+Object.assign(WARAY_UI_DICTIONARY, {
+  'READ · SEARCH · REFLECT': 'BASA · PAMILING · PAMALANDONG',
+  'Sign in to your Holy Bible account.': 'Sulod ha imo account han Baraan nga Biblia.',
+  'Register to access your Holy Bible account.': 'Magparehistro basi magkaada access ha imo account han Baraan nga Biblia.',
+  'Welcome to your Holy Bible': 'Maupay nga pag-abot ha imo Baraan nga Biblia',
+  'Welcome Back': 'Maupay nga Pagbalik',
+  'Create Your Account': 'Paghimo han Imo Account',
+  'Email Address': 'Email Address',
+  'Enter your email': 'Ibutang an imo email',
+  'Password': 'Password',
+  'Enter your password': 'Ibutang an imo password',
+  'Hide password': 'Tagoa an password',
+  'Show password': 'Ipakita an password',
+  'Log In': 'Sulod',
+  'Sign Up': 'Magparehistro',
+  'Create Account': 'Paghimo hin Account',
+  "Don't have an account?": 'Waray ka pa account?',
+  'Already have an account?': 'May account ka na?',
+  'Continue with Google': 'Padayon pinaagi han Google',
+  'Log Out': 'Gawas',
+
+  'Please wait...': 'Alayon paghulat...',
+  'Connecting to Google...': 'Nagtutukod hin koneksyon ha Google...',
+  'Login successful!': 'Malampuson an pag-login!',
+  'Account created successfully!': 'Malampuson nga nahimo an account!',
+  'Authentication failed.': 'Napakyas an authentication.',
+  'Clear all saved bookmarks?': 'Kuhaon ba an ngatanan nga gintipigan nga bookmark?',
+  'This verse is already bookmarked.': 'Mayda na ini nga bersikulo ha imo bookmarks.',
+  'Audio reading is not supported by this browser.': 'Diri nasusuportahan hini nga browser an pagbasa pinaagi han audio.',
+
+  'Checking saved Bible data…': 'Ginsisiguro an gintipigan nga datos han Biblia...',
+  'Downloading complete KJV text… keep this tab open.': 'Gindada-download an bug-os nga KJV... ayaw anay sirhi ini nga tab.',
+  'Bible text loaded from this device. Offline reading is ready.': 'Na-load an teksto han Biblia tikang hini nga device. Andam na an offline nga pagbasa.',
+  'Complete KJV loaded and saved for offline reading.': 'Na-load ngan gintipigan na an bug-os nga KJV para ha offline nga pagbasa.',
+  'Could not download the Bible text. Check your internet connection and reload.': 'Diri ma-download an teksto han Biblia. Susiha an internet connection ngan i-reload an page.',
+
+  'No matches found. Try “love”, “lov”, or a reference such as “John 3:16”.': 'Waray nakit-an nga resulta. Pamiling hin iba nga pulong o Bible reference.',
+  'Open verse': 'Abrihi an bersikulo',
+  'Open': 'Abrihi',
+  'Remove': 'Kuhaa',
+  'Save': 'Tipigi',
+  'Saved verses will appear here.': 'An imo gintipigan nga mga bersikulo makikita dinhi.',
+  'Clear': 'Kuhaa',
+  'Previous': 'Naglabay',
+  'Next': 'Sunod',
+  'New verse': 'Bag-o nga Bersikulo',
+  'Save Daily Verse': 'Tipigi an Adlaw-adlaw nga Bersikulo',
+
+  'Checking available Bible translations...': 'Ginsisiguro an mga available nga hubad han Biblia...',
+  'Translation catalog could not be loaded.': 'Diri ma-load an lista han mga hubad.',
+  'No verified translation available': 'Waray mapamatud-an nga hubad nga available',
+  'Bible translation catalog unavailable. Your existing Bible text is still working.': 'Diri available an lista han mga hubad. Nagagamit la gihapon an imo Biblia.',
+  'Translation download failed.': 'Napakyas an pag-download han hubad.',
+  'Invalid translation data.': 'Diri husto an datos han hubad.',
+  'This translation does not contain all 66 Bible books.': 'Diri kompleto an 66 nga libro hini nga hubad.',
+  'Could not restore the saved KJV Bible.': 'Diri maibalik an gintipigan nga KJV nga Biblia.'
+});
+async function translateInterfaceText(text, language) {
+  const original = String(text || '').trim();
+
+if (!original || language === 'en') return original;
+
+// Use the built-in Waray dictionary first.
+// If no exact match exists, continue to the translation service.
+if (
+  language === 'waray' &&
+  WARAY_UI_DICTIONARY[original]
+) {
+  return WARAY_UI_DICTIONARY[original];
+}
+
+  // MyMemory has a 500-byte maximum per request.
+  if (new TextEncoder().encode(original).length > 450) {
+    return original;
+  }
+
+  const cache = getUiCache(language);
+
+  if (cache[original]) {
+    return cache[original];
+  }
+
+  const usage = getUiUsage(language);
+
+  // Keep below the anonymous daily allowance.
+  if (usage.characters + original.length > 4500) {
+    return original;
+  }
+
+  const target = UI_LANGUAGE_CODES[language];
+
+  if (!target) return original;
+
+  try {
+    const params = new URLSearchParams({
+      q: original,
+      langpair: 'en|' + target,
+      mt: '1'
+    });
+
+    const response = await fetch(
+      UI_TRANSLATION_API + '?' + params.toString()
+    );
+
+    if (!response.ok) {
+      throw new Error('Translation service unavailable.');
+    }
+
+    const data = await response.json();
+
+    if (
+      data.responseStatus !== 200 ||
+      !data.responseData ||
+      !data.responseData.translatedText
+    ) {
+      throw new Error('No translation returned.');
+    }
+
+    const translated = data.responseData.translatedText;
+
+    if (!translated || translated === original) {
+      return original;
+    }
+
+    cache[original] = translated;
+    saveUiCache(language, cache);
+
+    usage.characters += original.length;
+
+    localStorage.setItem(
+      'holyBibleUiUsage_' + language,
+      JSON.stringify(usage)
+    );
+
+    return translated;
+
+  } catch (error) {
+    console.warn('Interface translation failed:', error);
+    return original;
+  }
+}
+
+function collectUiText(root, onlyNew = false) {
+  const found = [];
+
+  if (!root) return found;
+
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT
+  );
+
+  let node;
+
+  while ((node = walker.nextNode())) {
+    if (!node.nodeValue.trim()) continue;
+
+    if (node.parentElement?.closest(UI_SKIP_SELECTOR)) {
+      continue;
+    }
+
+    if (!uiOriginalText.has(node)) {
+      uiOriginalText.set(node, node.nodeValue);
+      uiTrackedText.add(node);
+      found.push(node);
+    } else if (!onlyNew) {
+      found.push(node);
+    }
+  }
+
+  return found;
+}
+
+function collectUiAttributes(root = document) {
+  const selector = '[placeholder], [title], [aria-label]';
+  const elements = [];
+
+  if (root.matches?.(selector)) {
+    elements.push(root);
+  }
+
+  elements.push(...root.querySelectorAll(selector));
+
+  const found = [];
+
+  elements.forEach(element => {
+    if (element.closest(UI_SKIP_SELECTOR)) return;
+
+    if (!uiOriginalAttributes.has(element)) {
+      uiOriginalAttributes.set(element, {
+        placeholder: element.getAttribute('placeholder'),
+        title: element.getAttribute('title'),
+        ariaLabel: element.getAttribute('aria-label')
+      });
+
+      uiTrackedElements.add(element);
+    }
+
+    found.push(element);
+  });
+
+  return found;
+}
+
+function preserveTextSpacing(original, translated) {
+  const leading = original.match(/^\s*/)?.[0] || '';
+  const trailing = original.match(/\s*$/)?.[0] || '';
+
+  return leading + translated.trim() + trailing;
+}
+
+async function translateUiNode(node, language, run) {
+  if (!node.isConnected) return;
+
+  const original = uiOriginalText.get(node);
+
+  if (!original) return;
+
+  if (language === 'en') {
+    node.nodeValue = original;
+    return;
+  }
+
+  const leading = original.match(/^\s*/)?.[0] || '';
+  const trailing = original.match(/\s*$/)?.[0] || '';
+  const core = original.trim();
+
+  if (!core) return;
+
+  const translated = await translateInterfaceText(
+    core,
+    language
+  );
+
+  if (run !== interfaceTranslationRun) return;
+
+  if (node.isConnected) {
+    node.nodeValue = leading + translated + trailing;
+  }
+}
+
+async function translateUiAttribute(
+  element,
+  attribute,
+  original,
+  language,
+  run
+) {
+  if (!element.isConnected || !original) return;
+
+  if (language === 'en') {
+    element.setAttribute(attribute, original);
+    return;
+  }
+
+  const translated = await translateInterfaceText(
+    original,
+    language
+  );
+
+  if (run !== interfaceTranslationRun) return;
+
+  if (element.isConnected) {
+    element.setAttribute(attribute, translated);
+  }
+}
+
+async function applyInterfaceLanguage(language) {
+  if (!UI_LANGUAGE_NAMES[language]) return;
+
+  currentInterfaceLanguage = language;
+  const run = ++interfaceTranslationRun;
+
+  document.documentElement.lang = language;
+if (language === 'waray') {
+  document.title = 'Baraan nga Biblia — Kasuratan';
+} else if (language === 'en') {
+  document.title = 'Holy Bible — Scriptures';
+} else {
+  document.title = 'Holy Bible — Scriptures';
+}
+  document.documentElement.dir =
+    ['ar', 'he', 'ur'].includes(language) ? 'rtl' : 'ltr';
+
+  // Restore original English text first.
+  uiTrackedText.forEach(node => {
+    if (node.isConnected) {
+      node.nodeValue = uiOriginalText.get(node);
+    }
+  });
+
+  uiTrackedElements.forEach(element => {
+    if (!element.isConnected) return;
+
+    const original = uiOriginalAttributes.get(element);
+
+    if (!original) return;
+
+    ['placeholder', 'title'].forEach(attribute => {
+      if (original[attribute] !== null) {
+        element.setAttribute(attribute, original[attribute]);
+      }
+    });
+
+    if (original.ariaLabel !== null) {
+      element.setAttribute('aria-label', original.ariaLabel);
+    }
+  });
+
+  const textNodes = collectUiText(document.body);
+  const elements = collectUiAttributes();
+
+  if (language === 'en') {
+    return;
+  }
+
+  translationMessage(
+    'Translating interface into ' + UI_LANGUAGE_NAMES[language] + '...'
+  );
+
+  // Translate in small groups to avoid sending too many requests at once.
+  for (let i = 0; i < textNodes.length; i += 3) {
+    if (run !== interfaceTranslationRun) return;
+
+    await Promise.all(
+      textNodes.slice(i, i + 3).map(node =>
+        translateUiNode(node, language, run)
+      )
+    );
+  }
+
+  for (const element of elements) {
+    if (run !== interfaceTranslationRun) return;
+
+    const original = uiOriginalAttributes.get(element);
+
+    if (!original) continue;
+
+    await Promise.all([
+      translateUiAttribute(
+        element,
+        'placeholder',
+        original.placeholder,
+        language,
+        run
+      ),
+      translateUiAttribute(
+        element,
+        'title',
+        original.title,
+        language,
+        run
+      ),
+      translateUiAttribute(
+        element,
+        'aria-label',
+        original.ariaLabel,
+        language,
+        run
+      )
+    ]);
+  }
+
+  if (run === interfaceTranslationRun) {
+    translationMessage(
+      'Interface language: ' + UI_LANGUAGE_NAMES[language] +
+      '. Bible text availability is checked separately.'
+    );
+  }
+}
+
+// Automatically translate newly rendered interface elements.
+const uiTranslationObserver = new MutationObserver(records => {
+  if (currentInterfaceLanguage === 'en') return;
+
+  const newNodes = [];
+  const newElements = [];
+
+  records.forEach(record => {
+    record.addedNodes.forEach(node => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        newNodes.push(...collectUiText(node, true));
+        newElements.push(...collectUiAttributes(node));
+      }
+
+      else if (node.nodeType === Node.TEXT_NODE) {
+        const parent = node.parentElement;
+
+        if (
+          parent &&
+          !parent.closest(UI_SKIP_SELECTOR) &&
+          node.nodeValue.trim() &&
+          !uiOriginalText.has(node)
+        ) {
+          uiOriginalText.set(node, node.nodeValue);
+          uiTrackedText.add(node);
+          newNodes.push(node);
+        }
+      }
+    });
+  });
+
+  const run = interfaceTranslationRun;
+  const language = currentInterfaceLanguage;
+
+  newNodes.forEach(node => {
+    translateUiNode(node, language, run);
+  });
+
+  newElements.forEach(element => {
+    const original = uiOriginalAttributes.get(element);
+
+    if (!original) return;
+
+    translateUiAttribute(
+      element,
+      'placeholder',
+      original.placeholder,
+      language,
+      run
+    );
+
+    translateUiAttribute(
+      element,
+      'title',
+      original.title,
+      language,
+      run
+    );
+
+    translateUiAttribute(
+      element,
+      'aria-label',
+      original.ariaLabel,
+      language,
+      run
+    );
+  });
+});
+uiTranslationObserver.observe(document.body, {
+  childList: true,
+  subtree: true
+});
+
+// ============================================
+// BIBLE TRANSLATION CATALOG
+// ============================================
+function translationLanguageMatches(item, language) {
+  const acceptedCodes = TRANSLATION_LANGUAGES[language] || [];
+
+  const code = String(item.language || '').toLowerCase();
+  const languageName = String(item.languageName || '').toLowerCase();
+  const englishName = String(item.languageEnglishName || '').toLowerCase();
+
+  const languageAliases = {
+    waray: ['waray', 'waray-waray'],
+    fil: ['filipino', 'tagalog'],
+    en: ['english'],
+    es: ['spanish', 'español'],
+    fr: ['french', 'français'],
+    de: ['german', 'deutsch'],
+    pt: ['portuguese'],
+    it: ['italian'],
+    zh: ['chinese'],
+    ja: ['japanese'],
+    ko: ['korean'],
+    ar: ['arabic'],
+    id: ['indonesian'],
+    hi: ['hindi'],
+    ru: ['russian'],
+    th: ['thai'],
+    vi: ['vietnamese'],
+    ms: ['malay'],
+    nl: ['dutch'],
+    el: ['greek'],
+    he: ['hebrew'],
+    tr: ['turkish'],
+    sw: ['swahili'],
+    ur: ['urdu'],
+    bn: ['bengali'],
+    pl: ['polish']
+  };
+
+  const names = languageAliases[language] || [];
+
+  return (
+    acceptedCodes.includes(code) ||
+    names.some(name =>
+      languageName.includes(name) ||
+      englishName.includes(name)
+    )
+  );
+}
+
+async function loadAvailableTranslations() {
+  if (!languageSelect || !translationVersionSelect) return;
+
+  translationMessage('Checking available Bible translations...');
+
+  try {
+    const response = await fetch(
+      `${TRANSLATION_API}/available_translations.json`
+    );
+
+    if (!response.ok) {
+      throw new Error('Translation catalog could not be loaded.');
+    }
+
+    const data = await response.json();
+
+    // Keep the existing safety check for complete,
+    // explicitly identified public-domain translations.
+    availableTranslations = (data.translations || []).filter(item =>
+  item.numberOfBooks === 66 &&
+  Array.isArray(item.availableFormats) &&
+  item.availableFormats.includes('json')
+);
+
+    updateTranslationVersionOptions();
+
+    const selectedLanguage = languageSelect.value || 'fil';
+
+    if (selectedLanguage === 'en') {
+      await switchBibleTranslation('LOCAL_KJV');
+    } else {
+      const matching = availableTranslations.filter(item =>
+        translationLanguageMatches(item, selectedLanguage)
+      );
+
+      if (matching.length) {
+        await switchBibleTranslation(matching[0].id);
+      } else {
+        translationMessage(
+          'Interface language is available. No verified 66-book public-domain Bible translation was found for this language. Your current Bible text remains unchanged.'
+        );
+      }
+    }
+
+  } catch (error) {
+    console.warn('Translation catalog:', error);
+
+    translationMessage(
+      'Bible translation catalog unavailable. Your existing Bible text is still working.'
+    );
+  }
+}
+
+function updateTranslationVersionOptions() {
+  if (!languageSelect || !translationVersionSelect) return;
+
+  const selectedLanguage = languageSelect.value;
+
+  translationVersionSelect.innerHTML = '';
+
+  if (selectedLanguage === 'en') {
+    const option = document.createElement('option');
+
+    option.value = 'LOCAL_KJV';
+    option.textContent = 'King James Version (KJV) - Offline';
+
+    translationVersionSelect.append(option);
+  }
+
+  const matching = availableTranslations.filter(item =>
+    translationLanguageMatches(item, selectedLanguage)
+  );
+
+  matching.forEach(item => {
+    const option = document.createElement('option');
+
+    option.value = item.id;
+    option.textContent =
+      `${item.name} (${item.shortName || item.id})`;
+
+    translationVersionSelect.append(option);
+  });
+
+  if (!translationVersionSelect.options.length) {
+    const option = document.createElement('option');
+
+    option.value = '';
+    option.textContent = 'No verified translation available';
+
+    translationVersionSelect.append(option);
+  }
+}
+
+function normalizeApiTranslation(data) {
+  if (!data || !Array.isArray(data.books)) {
+    throw new Error('Invalid translation data.');
+  }
+
+  const books = data.books.map((book, index) => {
+    const chapters = (book.chapters || []).map(chapterEntry => {
+      const chapter = chapterEntry.chapter || chapterEntry;
+
+      return (chapter.content || [])
+        .filter(item => item.type === 'verse')
+        .sort((a, b) => Number(a.number) - Number(b.number))
+        .map(item => String(item.text || ''));
+    });
+
+    return {
+      name: fullBookName(
+        book.commonName || book.name,
+        index
+      ),
+      testament: index < 39 ? 'OT' : 'NT',
+      chapters
+    };
+  });
+
+  if (books.length !== 66) {
+    throw new Error(
+      'This translation does not contain all 66 Bible books.'
+    );
+  }
+
+  return books;
+}
+
+function refreshTranslationCards() {
+  const cards = [
+    { bookId: 'oldBook', chapterId: 'oldChapter', testament: 'OT' },
+    { bookId: 'newBook', chapterId: 'newChapter', testament: 'NT' }
+  ];
+
+  cards.forEach(card => {
+    const bookElement = $(card.bookId);
+    const chapterElement = $(card.chapterId);
+
+    if (!bookElement || !chapterElement) return;
+
+    const previousName = state.books[state.bookIndex]?.name;
+
+    bookElement.innerHTML = '';
+
+    state.books.forEach((book, index) => {
+      if (book.testament !== card.testament) return;
+
+      const option = document.createElement('option');
+
+      option.value = index;
+      option.textContent = book.name;
+
+      bookElement.append(option);
+    });
+
+    const matchingIndex = state.books.findIndex(book =>
+      book.name === previousName &&
+      book.testament === card.testament
+    );
+
+    const firstIndex = state.books.findIndex(book =>
+      book.testament === card.testament
+    );
+
+    bookElement.value = String(
+      matchingIndex >= 0 ? matchingIndex : firstIndex
+    );
+
+    const selectedBook = state.books[Number(bookElement.value)];
+
+    chapterElement.innerHTML = '';
+
+    if (selectedBook) {
+      selectedBook.chapters.forEach((_, index) => {
+        const option = document.createElement('option');
+
+        option.value = index + 1;
+        option.textContent = String(index + 1);
+
+        chapterElement.append(option);
+      });
+    }
+  });
+}
+
+async function switchBibleTranslation(translationId) {
+  if (!translationId) return;
+
+  if (translationId === 'LOCAL_KJV') {
+    translationMessage('Restoring King James Version...');
+
+    try {
+      const cached = await dbGet('kjv');
+
+      if (!cached) {
+        throw new Error('Saved KJV data was not found.');
+      }
+
+      const previousBook = state.books[state.bookIndex]?.name;
+
+      state.books = normalize(cached);
+
+      const index = state.books.findIndex(book =>
+        book.name === previousBook
+      );
+
+      state.bookIndex = index >= 0 ? index : 0;
+
+      state.chapter = Math.min(
+        state.chapter,
+        state.books[state.bookIndex].chapters.length
+      );
+
+      activeTranslationId = 'LOCAL_KJV';
+      activeTranslationName = 'King James Version (KJV)';
+
+      renderBookOptions();
+      renderChapters();
+      renderChapter();
+      renderDaily();
+      refreshTranslationCards();
+
+      translationMessage(
+        'Current Bible text: King James Version (KJV) - Offline'
+      );
+
+    } catch (error) {
+      console.error(error);
+      translationMessage('Could not restore the saved KJV Bible.');
+    }
+
+    return;
+  }
+
+  const selected = availableTranslations.find(item =>
+    item.id === translationId
+  );
+
+  if (!selected) return;
+
+  translationMessage(`Loading ${selected.name}...`);
+
+  try {
+    const cacheKey = `translation_${translationId}`;
+
+    let books = await dbGet(cacheKey);
+
+    if (!books) {
+      const response = await fetch(
+        `${TRANSLATION_API}/${encodeURIComponent(translationId)}/complete.simple.json`
+      );
+
+      if (!response.ok) {
+        throw new Error('Translation download failed.');
+      }
+
+      const data = await response.json();
+
+      books = normalizeApiTranslation(data);
+
+      await dbSet(cacheKey, books);
+    }
+
+    const previousBook = state.books[state.bookIndex]?.name;
+
+    state.books = books;
+
+    const index = state.books.findIndex(book =>
+      book.name === previousBook
+    );
+
+    state.bookIndex = index >= 0 ? index : 0;
+
+    state.chapter = Math.min(
+      state.chapter,
+      state.books[state.bookIndex].chapters.length
+    );
+
+    activeTranslationId = translationId;
+    activeTranslationName = selected.name;
+
+    renderBookOptions();
+    renderChapters();
+    renderChapter();
+    renderDaily();
+    refreshTranslationCards();
+
+    translationMessage(`Current Bible text: ${selected.name}`);
+
+  } catch (error) {
+    console.error('Translation loading error:', error);
+
+    translationMessage(
+      `Could not load ${selected.name}. Your previous Bible text remains available.`
+    );
+  }
+}
+
+// Keep the existing chapter renderer and update its subtitle.
+const originalTranslationRenderChapter = renderChapter;
+
+renderChapter = function() {
+  originalTranslationRenderChapter();
+
+  const subtitle = reader.querySelector('.subhead');
+
+  if (subtitle) {
+    const book = state.books[state.bookIndex];
+
+    if (book) {
+      const testamentName =
+        book.testament === 'OT'
+          ? 'Old Testament'
+          : 'New Testament';
+
+      subtitle.textContent =
+        `${testamentName} · ${state.currentVerses.length} verses · ${activeTranslationName}`;
+    }
+  }
+};
+
+// ============================================
+// ONE LANGUAGE SELECTOR CONTROLS BOTH SYSTEMS
+// ============================================
+
+if (languageSelect) {
+  const savedLanguage = localStorage.getItem('holyBibleLanguage');
+
+  if (
+    savedLanguage &&
+    UI_LANGUAGE_NAMES[savedLanguage]
+  ) {
+    languageSelect.value = savedLanguage;
+  }
+
+  currentInterfaceLanguage = languageSelect.value || 'fil';
+
+  languageSelect.addEventListener('change', async () => {
+    const language = languageSelect.value;
+
+    localStorage.setItem('holyBibleLanguage', language);
+
+    // Change the entire interface.
+    applyInterfaceLanguage(language);
+
+    // Update the available Bible translations.
+    updateTranslationVersionOptions();
+
+    if (language === 'en') {
+      await switchBibleTranslation('LOCAL_KJV');
+      return;
+    }
+
+    const matching = availableTranslations.filter(item =>
+      translationLanguageMatches(item, language)
+    );
+
+    if (matching.length) {
+      translationVersionSelect.value = matching[0].id;
+      await switchBibleTranslation(matching[0].id);
+    } else {
+      translationMessage(
+        'The interface language was changed. No verified complete Bible translation is currently available for this language, so your existing Bible text remains unchanged.'
+      );
+    }
+  });
+}
+if (translationVersionSelect) {
+  translationVersionSelect.addEventListener('change', async () => {
+    const selectedVersion = translationVersionSelect.value;
+
+    if (selectedVersion) {
+      await switchBibleTranslation(selectedVersion);
+    }
+  });
+}
+// Start interface and Bible translation systems.
+applyInterfaceLanguage(currentInterfaceLanguage);
+loadAvailableTranslations();
+
+// ============================================
+// END OF UNIFIED LANGUAGE SYSTEM
+// ============================================
+

@@ -1,66 +1,377 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#173d32"><meta name="description" content="Holy Bible with separate Old and New Testament sections."><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"><title>Holy Bible — Scriptures</title></head><body>
-<header class="topbar"><div class="brand"><span class="cross">✝</span><div><h1>Holy Bible</h1><p>Read • Search • Reflect</p></div></div><button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button></header><main><section id="authSection" class="auth-section">
-  <div class="auth-card">
-    <div class="auth-heading">
-      <span class="cross">✝</span>
-      <h2 id="authTitle">Welcome Learn and Apply it to your Life</h2>
-      <p id="authDescription">Sign in to your Holy Bible account.</p>
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f32">
+  <meta name="description" content="Holy Bible — Read, search, and reflect on Scripture.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <title>Holy Bible — Scriptures</title>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="cross">✝</span>
+    <div>
+      <h1>Holy Bible</h1>
+      <p>READ · SEARCH · REFLECT</p>
     </div>
-   
-<form id="authForm">
-  <label for="authEmail">Email Address</label>
-  <input
-    id="authEmail"
-    type="email"
-    placeholder="Enter your email"
-    required
-  >
-
-  <label for="authPassword">Password</label>
-  <div class="password-wrapper">
-    <input
-      id="authPassword"
-      type="password"
-      placeholder="Enter your password"
-      minlength="8"
-      required
-    >
-
-    <button
-      type="button"
-      id="togglePassword"
-      class="password-toggle"
-      aria-label="Show password"
-    >
-      <span id="passwordEye">👁</span>
-    </button>
   </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button>
+</header>
 
-  <button id="authSubmit" class="primary" type="submit">
-    Log In
-  </button>
-</form>
+<main>
 
-    <button id="googleLogin" type="button">Continue with Google</button>
+  <!-- AUTHENTICATION -->
+  <section id="authSection" class="auth-section">
+    <div class="auth-card">
+      <div class="auth-heading">
+        <span class="cross">✝</span>
+        <p class="auth-eyebrow">WELCOME TO</p>
+        <h2 id="authTitle">Welcome Learn and Apply it to your Life</h2>
+        <p id="authDescription">Sign in to your Holy Bible account.</p>
+      </div>
 
-    <p id="authMessage" role="status"></p>
+      <form id="authForm">
+        <label for="authEmail">Email Address</label>
+        <input id="authEmail" type="email"
+          placeholder="Enter your email" required>
 
-    <p class="auth-switch">
-      <span id="authSwitchText">Don't have an account?</span>
-      <button id="authSwitch" type="button">Sign Up</button>
+        <label for="authPassword">Password</label>
+        <div class="password-wrapper">
+          <input id="authPassword" type="password"
+            placeholder="Enter your password"
+            minlength="8" required>
+          <button type="button" id="togglePassword"
+            class="password-toggle" aria-label="Show password">
+            <span id="passwordEye">👁</span>
+          </button>
+        </div>
+
+        <button id="authSubmit" class="primary auth-submit" type="submit">
+          Log In
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>OR</span></div>
+
+      <button id="googleLogin" type="button" class="google-button">
+        Continue with Google
+      </button>
+
+      <p id="authMessage" role="status"></p>
+
+      <p class="auth-switch">
+        <span id="authSwitchText">Don't have an account?</span>
+        <button id="authSwitch" type="button">Sign Up</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <p class="eyebrow">✦ YOUR DAILY SCRIPTURE ✦</p>
+      <h2>Find wisdom.<br>Discover faith.<br>Grow in His Word.</h2>
+      <p class="hero-description">
+        Explore the Scriptures, reflect on God's Word,
+        and find inspiration in every chapter.
+      </p>
+      <div class="hero-status">
+        <span class="status-dot"></span>
+        <span id="status" role="status">
+          Loading Bible text… first launch needs internet.
+        </span>
+      </div>
+    </div>
+    <div class="hero-decoration">✝</div>
+  </section>
+
+  <!-- LANGUAGE SELECTOR -->
+  <section class="translation-panel" id="translationPanel">
+    <div class="translation-heading">
+      <div>
+        <p class="eyebrow">PERSONALIZE YOUR EXPERIENCE</p>
+        <h2 id="translationHeading">App Language</h2>
+        <p id="translationDescription">
+          Choose the language for the entire Holy Bible app.
+        </p>
+      </div>
+      <span class="translation-icon">文</span>
+    </div>
+
+    <div class="translation-controls">
+      <div class="translation-field">
+        <label for="languageSelect" id="languageLabel">
+          Select Language
+        </label>
+        <select id="languageSelect">
+          <option value="fil">Filipino / Tagalog</option>
+          <option value="waray">Waray-Waray</option>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="pt">Portuguese</option>
+          <option value="it">Italian</option>
+          <option value="zh">Chinese</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="ar">Arabic</option>
+          <option value="id">Indonesian</option>
+          <option value="hi">Hindi</option>
+          <option value="ru">Russian</option>
+          <option value="th">Thai</option>
+          <option value="vi">Vietnamese</option>
+          <option value="ms">Malay</option>
+          <option value="nl">Dutch</option>
+          <option value="el">Greek</option>
+          <option value="he">Hebrew</option>
+          <option value="tr">Turkish</option>
+          <option value="sw">Swahili</option>
+          <option value="ur">Urdu</option>
+          <option value="bn">Bengali</option>
+          <option value="pl">Polish</option>
+        </select>
+      </div>
+    </div>
+
+    <p id="translationStatus" class="translation-status">
+      Current language: Filipino / Tagalog
     </p>
+
+    <select id="translationVersionSelect" hidden>
+      <option value="LOCAL_KJV">King James Version (KJV)</option>
+    </select>
+  </section>
+
+  <!-- TESTAMENTS -->
+  <div class="section-intro">
+    <p class="eyebrow">EXPLORE THE SCRIPTURES</p>
+    <h2>Choose Your Testament</h2>
+    <p>Discover the books and chapters of the Holy Bible.</p>
   </div>
-</section>
-<section class="hero"><p class="eyebrow">YOUR DAILY SCRIPTURE</p><h2>Find wisdom in every chapter.</h2><p id="status" role="status">Loading Bible text… first launch needs internet. It will be saved for offline reading.</p></section>
-<section class="testament-grid">
-<article class="testament-card old-card"><div class="card-art old-art"><div class="logo old-logo"><span>✡</span><small>OLD TESTAMENT</small></div><div><p class="eyebrow">39 BOOKS</p><h2>Old Testament</h2><p>The Law • History • Psalms • Prophets</p><small>Explore Genesis to Malachi.</small></div></div><div class="card-controls"><div class="field"><label for="oldBook">Book</label><select id="oldBook" disabled><option>Loading…</option></select></div><div class="field"><label for="oldChapter">Chapter</label><select id="oldChapter" disabled><option>1</option></select></div><div class="field translation"><label>Translation</label><div class="static">King James Version (KJV)</div></div><div class="card-search"><input id="oldSearch" type="search" placeholder="Search in Old Testament…" aria-label="Search in Old Testament"><button id="oldSearchBtn" class="primary">Search</button></div>
-        <div id="oldInlineResults" class="inline-results hidden" aria-live="polite"></div><div class="count">▣ &nbsp; Total Books: 39 &nbsp; | &nbsp; Genesis – Malachi</div><button id="oldBrowse" class="browse">▤ &nbsp; Browse All Old Testament Books <span>→</span></button></div></article>
-<article class="testament-card new-card"><div class="card-art new-art"><div class="logo new-logo"><span>▤</span><small>NEW TESTAMENT</small></div><div><p class="eyebrow">27 BOOKS</p><h2>New Testament</h2><p>The Gospels • Acts • Letters • Revelation</p><small>Explore Matthew to Revelation.</small></div></div><div class="card-controls"><div class="field"><label for="newBook">Book</label><select id="newBook" disabled><option>Loading…</option></select></div><div class="field"><label for="newChapter">Chapter</label><select id="newChapter" disabled><option>1</option></select></div><div class="field translation"><label>Translation</label><div class="static">King James Version (KJV)</div></div><div class="card-search"><input id="newSearch" type="search" placeholder="Search in New Testament…" aria-label="Search in New Testament"><button id="newSearchBtn" class="primary">Search</button></div>
-        <div id="newInlineResults" class="inline-results hidden" aria-live="polite"></div><div class="count">▣ &nbsp; Total Books: 27 &nbsp; | &nbsp; Matthew – Revelation</div><button id="newBrowse" class="browse">▤ &nbsp; Browse All New Testament Books <span>→</span></button></div></article></section>
-<section class="panel"><div class="toolrow"><button id="prevBtn">← Previous</button><button id="nextBtn">Next →</button><button id="fontDown">A−</button><button id="fontUp">A+</button><button id="readBtn">🔊 Read chapter</button><button id="stopBtn">■ Stop audio</button></div></section>
-<section id="reader" class="reader panel"><div class="empty"><div class="spinner"></div><h3>Preparing your Bible</h3><p>Select a book and press Browse to read its chapter.</p></div></section>
-<section id="searchResults" class="panel results hidden"><div class="sectionhead"><h2>Search results</h2><button id="closeResults">Close</button></div><div id="resultsList"></div></section>
-<section class="extras"><article class="panel"><div class="sectionhead"><h2>🔖 Bookmarks</h2><button id="clearBookmarks">Clear</button></div><div id="bookmarkList"><p class="muted">Saved verses will appear here.</p></div></article><article class="panel"><div class="sectionhead"><h2>🌿 Daily verse</h2><button id="dailyBtn">New verse</button></div><blockquote id="dailyVerse">Loading a verse…</blockquote><button id="saveDaily">Save daily verse</button></article></section>
-<footer><p>Text: King James Version (public domain in the United States). Other translations may have different copyright terms.</p><p>For offline use, open once while online, allow Bible data to finish loading, then revisit this site.</p></footer>
-<div class="legacy"><select id="testament"><option value="all">All books</option><option value="OT">Old Testament</option><option value="NT">New Testament</option></select><select id="bookSelect" disabled></select><select id="chapterSelect" disabled></select><select id="versionSelect"><option value="KJV">KJV</option></select><input id="searchInput"><button id="searchBtn">Search</button></div></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script></body></html>
+
+  <section class="testament-grid">
+
+    <!-- OLD TESTAMENT -->
+    <article class="testament-card old-card">
+      <div class="card-art old-art">
+        <div class="logo old-logo">
+          <span>✡</span>
+          <small>OLD TESTAMENT</small>
+        </div>
+        <div>
+          <p class="eyebrow">39 BOOKS</p>
+          <h2>Old Testament</h2>
+          <p>The Law · History · Psalms · Prophets</p>
+          <small>Explore Genesis to Malachi.</small>
+        </div>
+      </div>
+
+      <div class="card-controls">
+        <div class="field">
+          <label for="oldBook">Select Book</label>
+          <select id="oldBook" disabled>
+            <option>Loading…</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="oldChapter">Chapter</label>
+          <select id="oldChapter" disabled>
+            <option>1</option>
+          </select>
+        </div>
+
+        <div class="field translation">
+          <label>Translation</label>
+          <div class="static">King James Version (KJV)</div>
+        </div>
+
+        <div class="card-search">
+          <input id="oldSearch" type="search"
+            placeholder="Search in Old Testament…"
+            aria-label="Search in Old Testament">
+          <button id="oldSearchBtn" class="primary">Search</button>
+        </div>
+
+        <div id="oldInlineResults"
+          class="inline-results hidden" aria-live="polite"></div>
+
+        <div class="count">
+          <span>✦</span> Total Books: 39
+          <span class="count-range">Genesis – Malachi</span>
+        </div>
+
+        <button id="oldBrowse" class="browse">
+          Browse All Old Testament Books <span>→</span>
+        </button>
+      </div>
+    </article>
+
+    <!-- NEW TESTAMENT -->
+    <article class="testament-card new-card">
+      <div class="card-art new-art">
+        <div class="logo new-logo">
+          <span>✝</span>
+          <small>NEW TESTAMENT</small>
+        </div>
+        <div>
+          <p class="eyebrow">27 BOOKS</p>
+          <h2>New Testament</h2>
+          <p>The Gospels · Acts · Letters · Revelation</p>
+          <small>Explore Matthew to Revelation.</small>
+        </div>
+      </div>
+
+      <div class="card-controls">
+        <div class="field">
+          <label for="newBook">Select Book</label>
+          <select id="newBook" disabled>
+            <option>Loading…</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="newChapter">Chapter</label>
+          <select id="newChapter" disabled>
+            <option>1</option>
+          </select>
+        </div>
+
+        <div class="field translation">
+          <label>Translation</label>
+          <div class="static">King James Version (KJV)</div>
+        </div>
+
+        <div class="card-search">
+          <input id="newSearch" type="search"
+            placeholder="Search in New Testament…"
+            aria-label="Search in New Testament">
+          <button id="newSearchBtn" class="primary">Search</button>
+        </div>
+
+        <div id="newInlineResults"
+          class="inline-results hidden" aria-live="polite"></div>
+
+        <div class="count">
+          <span>✦</span> Total Books: 27
+          <span class="count-range">Matthew – Revelation</span>
+        </div>
+
+        <button id="newBrowse" class="browse">
+          Browse All New Testament Books <span>→</span>
+        </button>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- READER TOOLS -->
+  <div class="section-intro reader-intro">
+    <p class="eyebrow">YOUR READING SPACE</p>
+    <h2>Read the Word</h2>
+  </div>
+
+  <section class="panel reader-tools">
+    <div class="tool-label">READING CONTROLS</div>
+    <div class="toolrow">
+      <button id="prevBtn">← Previous</button>
+      <button id="nextBtn">Next →</button>
+      <span class="tool-divider"></span>
+      <button id="fontDown">A−</button>
+      <button id="fontUp">A+</button>
+      <span class="tool-divider"></span>
+      <button id="readBtn" class="tool-primary">🔊 Read chapter</button>
+      <button id="stopBtn">■ Stop audio</button>
+    </div>
+  </section>
+
+  <!-- BIBLE READER -->
+  <section id="reader" class="reader panel">
+    <div class="empty">
+      <div class="spinner"></div>
+      <h3>Preparing your Bible</h3>
+      <p>Select a book and press Browse to read its chapter.</p>
+    </div>
+  </section>
+
+  <!-- SEARCH RESULTS -->
+  <section id="searchResults" class="panel results hidden">
+    <div class="sectionhead">
+      <h2>Search Results</h2>
+      <button id="closeResults">Close</button>
+    </div>
+    <div id="resultsList"></div>
+  </section>
+
+  <!-- PERSONAL LIBRARY -->
+  <div class="section-intro">
+    <p class="eyebrow">YOUR PERSONAL LIBRARY</p>
+    <h2>Save & Reflect</h2>
+    <p>Keep your favorite verses and daily inspiration.</p>
+  </div>
+
+  <section class="extras">
+    <article class="panel">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">YOUR COLLECTION</p>
+          <h2>🔖 Bookmarks</h2>
+        </div>
+        <button id="clearBookmarks">Clear</button>
+      </div>
+      <div id="bookmarkList">
+        <p class="muted">Saved verses will appear here.</p>
+      </div>
+    </article>
+
+    <article class="panel daily-panel">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">DAILY INSPIRATION</p>
+          <h2>🌿 Daily Verse</h2>
+        </div>
+        <button id="dailyBtn">New verse</button>
+      </div>
+      <blockquote id="dailyVerse">Loading a verse…</blockquote>
+      <button id="saveDaily" class="primary">☆ Save Daily Verse</button>
+    </article>
+  </section>
+
+  <footer>
+    <div class="footer-cross">✝</div>
+    <h2>Holy Bible</h2>
+    <p>Read · Search · Reflect</p>
+    <div class="footer-line"></div>
+    <p>Text: King James Version (public domain in the United States).</p>
+    <p>For offline use, open once while online and allow Bible data to finish loading.</p>
+  </footer>
+
+  <!-- LEGACY CONTROLS REQUIRED BY APP.JS -->
+  <div class="legacy">
+    <select id="testament">
+      <option value="all">All books</option>
+      <option value="OT">Old Testament</option>
+      <option value="NT">New Testament</option>
+    </select>
+    <select id="bookSelect" disabled></select>
+    <select id="chapterSelect" disabled></select>
+    <select id="versionSelect">
+      <option value="KJV">KJV</option>
+    </select>
+    <input id="searchInput">
+    <button id="searchBtn">Search</button>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
