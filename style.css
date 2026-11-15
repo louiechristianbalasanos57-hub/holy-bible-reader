@@ -806,6 +806,26 @@ input:focus {
   background: #245a46;
 }
 
+.toolrow .tool-highlight {
+  background: #f4d36f;
+  border-color: #d8ad63;
+  color: #243326;
+  font-weight: 800;
+}
+.toolrow .tool-highlight:hover:not(:disabled) {
+  background: #edc34e;
+  border-color: #b88a2d;
+}
+.toolrow .tool-highlight:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.highlight-selection-status {
+  color: var(--muted);
+  font-size: .78rem;
+  flex: 1 1 220px;
+}
+
 .tool-divider {
   width: 1px;
   height: 25px;
@@ -1435,3 +1455,60 @@ select:focus-visible {
 @media(max-width:850px){.page-nav{gap:2px;margin-right:8px}.nav-link{padding:8px 9px;font-size:.78rem}.home-testament-grid{gap:14px}.home-testament-tile{padding:22px;gap:16px}}
 @media(max-width:620px){.topbar{flex-wrap:wrap;gap:8px}.page-nav{order:3;width:100%;justify-content:center;margin:0}.nav-link{font-size:.75rem;padding:7px 10px}.home-testament-grid{grid-template-columns:1fr}.home-testament-tile{min-height:160px}.tile-symbol{width:65px;height:65px;flex-basis:65px;font-size:2.2rem}.books-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.book-choice{font-size:.85rem;padding:11px}}
 body.dark .home-testament-tile{border-color:#ffffff20}body.dark .book-choice{background:#1b3028;color:#edf3ed;border-color:#344b40}body.dark .book-choice:hover{background:#274638}
+
+/* =========================================
+   SELECTABLE SCRIPTURE HIGHLIGHTS
+========================================= */
+.bible-highlight {
+  background: #f4d36f;
+  color: #263326;
+  border-radius: 4px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #b88a2d;
+  text-decoration-thickness: 1px;
+}
+.bible-highlight:hover { background: #edc34e; }
+.highlight-toolbar {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  font-size: .82rem;
+  line-height: 1.2;
+}
+.highlight-toolbar.hidden { display: none !important; }
+.highlight-toolbar span { white-space: nowrap; color: var(--muted); }
+.highlight-toolbar button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.highlight-toolbar button:disabled { opacity: .65; cursor: wait; }
+.vtext { user-select: text; -webkit-user-select: text; }
+body.dark .bible-highlight { background: #d9b653; color: #1c281f; }
+body.dark .highlight-toolbar { background: #1b3028; color: #edf3ed; border-color: #40584a; }
+@media (max-width: 520px) {
+  .highlight-toolbar { max-width: calc(100vw - 24px); }
+  .highlight-toolbar span { display: none; }
+}
+
+@media (max-width: 620px) {
+  .highlight-selection-status { flex-basis: 100%; }
+  .toolrow .tool-highlight { width: 100%; }
+}

@@ -37,7 +37,7 @@ function fullBookName(name,index){
  return found || CANONICAL_BOOKS[index] || original;
 }
 
-const state={books:[],bookIndex:0,chapter:1,font:1.15,bible:null,bookmarks:[],currentVerses:[]};
+const state={books:[],bookIndex:0,chapter:1,font:1.15,bible:null,bookmarks:[],currentVerses:[],userId:null,highlights:[]};
 const DB_NAME='holy-bible-db', DB_STORE='cache';
 const bookSelect=$('bookSelect'), chapterSelect=$('chapterSelect'), reader=$('reader');
 function openDB(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return resolve(null);const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(DB_STORE);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
@@ -84,15 +84,176 @@ function initReader(){
 function renderBookOptions(){const filter=$('testament').value;bookSelect.innerHTML='';state.books.forEach((b,i)=>{if(filter!=='all'&&b.testament!==filter)return;const o=document.createElement('option');o.value=i;o.textContent=(b.testament==='OT'?'OT · ':'NT · ')+b.name;bookSelect.append(o)});if(!bookSelect.options.length)return;const current=[...bookSelect.options].some(o=>Number(o.value)===state.bookIndex);if(!current)state.bookIndex=Number(bookSelect.options[0].value);bookSelect.value=String(state.bookIndex)}
 function renderChapters(){const b=state.books[state.bookIndex];chapterSelect.innerHTML='';if(!b)return;b.chapters.forEach((_,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent='Chapter '+(i+1);chapterSelect.append(o)});state.chapter=Math.min(Math.max(1,state.chapter),b.chapters.length);chapterSelect.value=String(state.chapter)}
 function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function renderChapter(){const b=state.books[state.bookIndex];if(!b)return;const verses=b.chapters[state.chapter-1]||[];state.currentVerses=verses;
+function renderChapter(){const b=state.books[state.bookIndex];if(!b)return;const verses=b.chapters[state.chapter-1]||[];state.currentVerses=verses;state.highlights=[];
  localStorage.setItem('holyBibleLocation',JSON.stringify({book:b.name,chapter:state.chapter}));
  reader.innerHTML=`<div class="sectionhead"><div><h2>${escapeHTML(b.name)} ${state.chapter}</h2><p class="subhead">${b.testament==='OT'?'Old Testament':'New Testament'} · ${verses.length} verses · KJV</p></div><span class="pill">${state.bookIndex+1}/66 books</span></div><div id="verseList"></div>`;
  const list=$('verseList');verses.forEach((text,i)=>{const row=document.createElement('div');row.className='verse';row.id='v'+(i+1);row.innerHTML=`<span class="vnum">${i+1}</span><span class="vtext">${escapeHTML(cleanText(text))}</span><span class="verseActions"><button data-action="bookmark" data-verse="${i+1}" title="Bookmark verse">☆</button><button data-action="speak" data-verse="${i+1}" title="Read verse aloud">🔊</button></span>`;list.append(row)});
- list.addEventListener('click',e=>{const btn=e.target.closest('button[data-action]');if(!btn)return;const n=Number(btn.dataset.verse);if(btn.dataset.action==='bookmark')addBookmark(ref(b.name,state.chapter,n),verses[n-1]);else speak(`${b.name} chapter ${state.chapter} verse ${n}. ${cleanText(verses[n-1])}`)});
+ list.addEventListener('click',e=>{
+  const mark=e.target.closest('mark[data-highlight-id]');
+  if(mark){e.preventDefault();removeBibleHighlight(mark.dataset.highlightId);return;}
+  const btn=e.target.closest('button[data-action]');if(!btn)return;const n=Number(btn.dataset.verse);if(btn.dataset.action==='bookmark')addBookmark(ref(b.name,state.chapter,n),verses[n-1]);else speak(`${b.name} chapter ${state.chapter} verse ${n}. ${cleanText(verses[n-1])}`)
+ });
  $('prevBtn').disabled=state.bookIndex===0&&state.chapter===1;$('nextBtn').disabled=state.bookIndex===65&&state.chapter===state.books[65].chapters.length;
+ loadAndApplyBibleHighlights(b.name,state.chapter);
 }
 function cleanText(s){return String(s).replace(/\[[^\]]*\]/g,m=>m.slice(1,-1)).replace(/[{}]/g,'')}
 function ref(book,ch,v){return `${book} ${ch}:${v}`}
+
+// ============================================
+// USER-SPECIFIC WORD / PHRASE HIGHLIGHTS
+// Highlights are stored in Supabase so they follow the signed-in account.
+// ============================================
+let highlightToolbar=null;
+let pendingHighlightSelection=null;
+
+function ensureHighlightToolbar(){
+ if(highlightToolbar)return highlightToolbar;
+ highlightToolbar=document.createElement('div');
+ highlightToolbar.id='highlightToolbar';
+ highlightToolbar.className='highlight-toolbar hidden';
+ highlightToolbar.innerHTML='<span>Selected text</span><button type="button" id="applyTextHighlight">✦ Highlight</button>';
+ document.body.appendChild(highlightToolbar);
+ highlightToolbar.addEventListener('mousedown',event=>event.preventDefault());
+ highlightToolbar.querySelector('#applyTextHighlight').addEventListener('click',saveSelectedBibleHighlight);
+ return highlightToolbar;
+}
+
+function getBibleSelection(){
+ const selection=window.getSelection();
+ if(!selection||selection.isCollapsed||!selection.rangeCount)return null;
+ const range=selection.getRangeAt(0);
+ const startElement=range.startContainer.nodeType===Node.ELEMENT_NODE?range.startContainer:range.startContainer.parentElement;
+ const endElement=range.endContainer.nodeType===Node.ELEMENT_NODE?range.endContainer:range.endContainer.parentElement;
+ const startVerse=startElement?.closest?.('.vtext');
+ const endVerse=endElement?.closest?.('.vtext');
+ if(!startVerse||startVerse!==endVerse)return null;
+ const verseRow=startVerse.closest('.verse');
+ if(!verseRow||!reader.contains(verseRow))return null;
+ const selectedText=range.toString();
+ if(!selectedText.trim())return null;
+ const prefix=document.createRange();
+ prefix.selectNodeContents(startVerse);
+ try{prefix.setEnd(range.startContainer,range.startOffset)}catch{return null;}
+ const startOffset=prefix.toString().length;
+ const endOffset=startOffset+selectedText.length;
+ return {book:state.books[state.bookIndex]?.name,chapter:state.chapter,verse:Number(verseRow.id.slice(1)),startOffset,endOffset,selectedText};
+}
+
+function updateHighlightButton(){
+ const button=$('addHighlightBtn');
+ const status=$('highlightSelectionStatus');
+ if(!button)return;
+ const details=getBibleSelection();
+ button.disabled=!details;
+ if(status)status.textContent=details
+  ? (state.userId?'Ready to highlight: “'+details.selectedText+'”':'Log in to save your selected highlight.')
+  : 'Select a word or phrase in a verse, then click Highlight.';
+}
+
+function showHighlightToolbar(){
+ const toolbar=ensureHighlightToolbar();
+ const details=getBibleSelection();
+ updateHighlightButton();
+ if(!details||!state.userId){toolbar.classList.add('hidden');pendingHighlightSelection=null;return;}
+ pendingHighlightSelection=details;
+ toolbar.classList.remove('hidden');
+ const range=window.getSelection().getRangeAt(0);
+ const rect=range.getBoundingClientRect();
+ const left=Math.min(Math.max(12,rect.left+(rect.width/2)-toolbar.offsetWidth/2),window.innerWidth-toolbar.offsetWidth-12);
+ toolbar.style.left=`${left}px`;
+ toolbar.style.top=`${Math.max(12,rect.top-48)}px`;
+}
+
+function hideHighlightToolbar(){
+ if(highlightToolbar)highlightToolbar.classList.add('hidden');
+ pendingHighlightSelection=null;
+}
+
+document.addEventListener('mouseup',event=>{
+ if(event.target.closest?.('#highlightToolbar'))return;
+ window.setTimeout(showHighlightToolbar,0);
+});
+document.addEventListener('keyup',event=>{
+ if(['Shift','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))showHighlightToolbar();
+});
+document.addEventListener('mousedown',event=>{
+ if(!event.target.closest?.('#highlightToolbar')&&!event.target.closest?.('.vtext'))hideHighlightToolbar();
+});
+document.addEventListener('touchend',()=>window.setTimeout(showHighlightToolbar,80),{passive:true});
+
+// Persistent reader-controls button: select any word/phrase, then press this button.
+$('addHighlightBtn')?.addEventListener('click',()=>{
+ const details=getBibleSelection();
+ if(!details){alert('Please select a word or phrase inside a Bible verse first.');updateHighlightButton();return;}
+ pendingHighlightSelection=details;
+ saveSelectedBibleHighlight();
+});
+
+function renderHighlightedVerse(text,highlights){
+ const valid=(highlights||[]).filter(h=>Number.isInteger(h.start_offset)&&Number.isInteger(h.end_offset)&&h.start_offset>=0&&h.end_offset>h.start_offset&&h.end_offset<=text.length).sort((a,b)=>a.start_offset-b.start_offset);
+ let html='',cursor=0;
+ for(const h of valid){
+  if(h.start_offset<cursor)continue;
+  html+=escapeHTML(text.slice(cursor,h.start_offset));
+  html+=`<mark class="bible-highlight" data-highlight-id="${escapeHTML(String(h.id))}" title="Click to remove this highlight">${escapeHTML(text.slice(h.start_offset,h.end_offset))}</mark>`;
+  cursor=h.end_offset;
+ }
+ return html+escapeHTML(text.slice(cursor));
+}
+
+async function loadAndApplyBibleHighlights(book,chapter){
+ const userId=state.userId;
+ if(!userId){state.highlights=[];return;}
+ const bookIndex=state.bookIndex;
+ const {data,error}=await supabaseClient.from('bible_highlights')
+  .select('id,book,chapter,verse,translation_id,start_offset,end_offset,selected_text,color')
+  .eq('user_id',userId).eq('book',book).eq('chapter',chapter)
+  .eq('translation_id',activeTranslationId)
+  .order('start_offset',{ascending:true});
+ if(error){console.warn('Could not load Bible highlights:',error.message);return;}
+ if(state.userId!==userId||state.bookIndex!==bookIndex||state.chapter!==chapter||state.books[state.bookIndex]?.name!==book)return;
+ state.highlights=data||[];
+ state.highlights.forEach(h=>{
+  const verseText=cleanText(state.currentVerses[h.verse-1]||'');
+  const host=document.querySelector(`#v${h.verse} .vtext`);
+  if(host)host.innerHTML=renderHighlightedVerse(verseText,state.highlights.filter(x=>x.verse===h.verse));
+ });
+}
+
+async function saveSelectedBibleHighlight(){
+ const h=pendingHighlightSelection;
+ if(!h||!state.userId){alert('Please log in to save your highlights.');hideHighlightToolbar();return;}
+ const overlaps=state.highlights.some(existing=>existing.verse===h.verse&&h.startOffset<existing.end_offset&&h.endOffset>existing.start_offset);
+ if(overlaps){alert('This text already contains a highlight. Remove the existing highlight first if you want to change it.');return;}
+ const button=highlightToolbar.querySelector('#applyTextHighlight');
+ button.disabled=true;button.textContent='Saving…';
+ const {data,error}=await supabaseClient.from('bible_highlights').insert({
+  user_id:state.userId,book:h.book,chapter:h.chapter,verse:h.verse,
+  translation_id:activeTranslationId,start_offset:h.startOffset,end_offset:h.endOffset,selected_text:h.selectedText,color:'yellow'
+ }).select('id,book,chapter,verse,translation_id,start_offset,end_offset,selected_text,color').single();
+ button.disabled=false;button.textContent='✦ Highlight';
+ if(error){console.error('Highlight save failed:',error);alert(error.message.includes('bible_highlights')?'Please create the bible_highlights table in Supabase first.':`Could not save highlight: ${error.message}`);return;}
+ if(state.bookIndex>=0&&state.books[state.bookIndex]?.name===h.book&&state.chapter===h.chapter){
+  state.highlights.push(data);
+  const verseText=cleanText(state.currentVerses[h.verse-1]||'');
+  const host=document.querySelector(`#v${h.verse} .vtext`);
+  if(host)host.innerHTML=renderHighlightedVerse(verseText,state.highlights.filter(x=>x.verse===h.verse));
+ }
+ window.getSelection()?.removeAllRanges();hideHighlightToolbar();updateHighlightButton();
+}
+
+async function removeBibleHighlight(id){
+ if(!state.userId)return;
+ if(!confirm('Remove this highlight?'))return;
+ const {error}=await supabaseClient.from('bible_highlights').delete().eq('id',id).eq('user_id',state.userId);
+ if(error){alert(`Could not remove highlight: ${error.message}`);return;}
+ const mark=document.querySelector(`mark[data-highlight-id="${CSS.escape(String(id))}"]`);
+ const targetVerse=Number(mark?.closest('.verse')?.id?.slice(1));
+ state.highlights=state.highlights.filter(h=>String(h.id)!==String(id));
+ // Re-render the affected verse from its original Bible text and remaining saved ranges.
+ if(targetVerse){const host=document.querySelector(`#v${targetVerse} .vtext`);if(host)host.innerHTML=renderHighlightedVerse(cleanText(state.currentVerses[targetVerse-1]||''),state.highlights.filter(h=>h.verse===targetVerse));}
+ updateHighlightButton();
+}
 function navigateRef(bookName,ch){const i=state.books.findIndex(b=>b.name.toLowerCase()===bookName.toLowerCase());if(i<0)return;openSelectedBook(i,ch)}
 function next(){const b=state.books[state.bookIndex];if(state.chapter<b.chapters.length)state.chapter++;else if(state.bookIndex<65){state.bookIndex++;state.chapter=1}renderBookOptions();renderChapters();renderChapter()}
 function prev(){if(state.chapter>1)state.chapter--;else if(state.bookIndex>0){state.bookIndex--;state.chapter=state.books[state.bookIndex].chapters.length}renderBookOptions();renderChapters();renderChapter()}
@@ -265,8 +426,26 @@ function showAuthMessage(message, isError = false) {
   authMessage.style.color = isError ? '#c0392b' : 'var(--green)';
 }
 
+function clearRenderedBibleHighlights() {
+  document.querySelectorAll('#verseList .verse').forEach((row, index) => {
+    const host = row.querySelector('.vtext');
+    if (host) host.textContent = cleanText(state.currentVerses[index] || '');
+  });
+}
+
 function updateAuthScreen(session) {
   const signedIn = !!session;
+  const previousUserId = state.userId;
+  state.userId = session?.user?.id || null;
+  if (previousUserId !== state.userId) {
+    state.highlights = [];
+    clearRenderedBibleHighlights();
+    hideHighlightToolbar();
+    if (signedIn && state.books.length) {
+      const currentBook = state.books[state.bookIndex]?.name;
+      if (currentBook) loadAndApplyBibleHighlights(currentBook, state.chapter);
+    }
+  }
 
   // Hide Bible content until the user is signed in.
   document.querySelectorAll('main > :not(#authSection)').forEach(element => {
