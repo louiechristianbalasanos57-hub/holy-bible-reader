@@ -244,7 +244,22 @@ const authSection = $('authSection');
 const authForm = $('authForm');
 const authMessage = $('authMessage');
 const authSwitch = $('authSwitch');
+const togglePassword = $('togglePassword');
+const authPassword = $('authPassword');
+const passwordEye = $('passwordEye');
 
+togglePassword.addEventListener('click', () => {
+  const isHidden = authPassword.type === 'password';
+
+  authPassword.type = isHidden ? 'text' : 'password';
+
+  passwordEye.textContent = isHidden ? '🙈' : '👁';
+
+  togglePassword.setAttribute(
+    'aria-label',
+    isHidden ? 'Hide password' : 'Show password'
+  );
+});
 function showAuthMessage(message, isError = false) {
   authMessage.textContent = message;
   authMessage.style.color = isError ? '#c0392b' : 'var(--green)';

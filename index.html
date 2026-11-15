@@ -3,19 +3,43 @@
   <div class="auth-card">
     <div class="auth-heading">
       <span class="cross">✝</span>
-      <h2 id="authTitle">Welcome Back</h2>
+      <h2 id="authTitle">Welcome Learn and Apply it to your Life</h2>
       <p id="authDescription">Sign in to your Holy Bible account.</p>
     </div>
+   
+<form id="authForm">
+  <label for="authEmail">Email Address</label>
+  <input
+    id="authEmail"
+    type="email"
+    placeholder="Enter your email"
+    required
+  >
 
-    <form id="authForm">
-      <label for="authEmail">Email Address</label>
-      <input id="authEmail" type="email" placeholder="Enter your email" required>
+  <label for="authPassword">Password</label>
+  <div class="password-wrapper">
+    <input
+      id="authPassword"
+      type="password"
+      placeholder="Enter your password"
+      minlength="8"
+      required
+    >
 
-      <label for="authPassword">Password</label>
-      <input id="authPassword" type="password" placeholder="Enter your password" minlength="6" required>
+    <button
+      type="button"
+      id="togglePassword"
+      class="password-toggle"
+      aria-label="Show password"
+    >
+      <span id="passwordEye">👁</span>
+    </button>
+  </div>
 
-      <button id="authSubmit" class="primary" type="submit">Log In</button>
-    </form>
+  <button id="authSubmit" class="primary" type="submit">
+    Log In
+  </button>
+</form>
 
     <button id="googleLogin" type="button">Continue with Google</button>
 
