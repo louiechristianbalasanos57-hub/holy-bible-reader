@@ -78,7 +78,7 @@ async function loadBible(){
 function initReader(){
  bookSelect.innerHTML='';renderBookOptions();bookSelect.disabled=false;$('testament').disabled=false;chapterSelect.disabled=false;
  const saved=localStorage.getItem('holyBibleLocation');if(saved){try{const x=JSON.parse(saved);const i=state.books.findIndex(b=>b.name===x.book);if(i>=0){state.bookIndex=i;state.chapter=x.chapter||1}}catch{}}
- loadBookmarks();renderBookOptions();renderChapters();renderChapter();renderDaily();fillTestamentCard('oldBook','oldChapter','OT');fillTestamentCard('newBook','newChapter','NT');
+ loadBookmarks();renderBookOptions();renderChapters();renderChapter();renderDaily();fillTestamentCard('oldBook','oldChapter','OT');fillTestamentCard('newBook','newChapter','NT');renderTestamentBookGrids();
  if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 function renderBookOptions(){const filter=$('testament').value;bookSelect.innerHTML='';state.books.forEach((b,i)=>{if(filter!=='all'&&b.testament!==filter)return;const o=document.createElement('option');o.value=i;o.textContent=(b.testament==='OT'?'OT · ':'NT · ')+b.name;bookSelect.append(o)});if(!bookSelect.options.length)return;const current=[...bookSelect.options].some(o=>Number(o.value)===state.bookIndex);if(!current)state.bookIndex=Number(bookSelect.options[0].value);bookSelect.value=String(state.bookIndex)}
@@ -93,7 +93,7 @@ function renderChapter(){const b=state.books[state.bookIndex];if(!b)return;const
 }
 function cleanText(s){return String(s).replace(/\[[^\]]*\]/g,m=>m.slice(1,-1)).replace(/[{}]/g,'')}
 function ref(book,ch,v){return `${book} ${ch}:${v}`}
-function navigateRef(bookName,ch){const i=state.books.findIndex(b=>b.name.toLowerCase()===bookName.toLowerCase());if(i<0)return;state.bookIndex=i;state.chapter=ch;renderBookOptions();renderChapters();renderChapter();reader.scrollIntoView({behavior:'smooth',block:'start'})}
+function navigateRef(bookName,ch){const i=state.books.findIndex(b=>b.name.toLowerCase()===bookName.toLowerCase());if(i<0)return;openSelectedBook(i,ch)}
 function next(){const b=state.books[state.bookIndex];if(state.chapter<b.chapters.length)state.chapter++;else if(state.bookIndex<65){state.bookIndex++;state.chapter=1}renderBookOptions();renderChapters();renderChapter()}
 function prev(){if(state.chapter>1)state.chapter--;else if(state.bookIndex>0){state.bookIndex--;state.chapter=state.books[state.bookIndex].chapters.length}renderBookOptions();renderChapters();renderChapter()}
 function speak(text){if(!('speechSynthesis'in window)){alert('Audio reading is not supported by this browser.');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=.9;speechSynthesis.speak(u)}
@@ -204,12 +204,12 @@ function fillTestamentCard(bookId, chapterId, testament) {
  state.books.forEach((b,i)=>{if(b.testament===testament){const o=document.createElement('option');o.value=i;o.textContent=b.name;sel.append(o);}});
  const first=state.books.findIndex(b=>b.testament===testament); sel.value=String(state.books[state.bookIndex]?.testament===testament?state.bookIndex:first);
  function fillChapters(){const b=state.books[Number(sel.value)];ch.innerHTML='';if(b)b.chapters.forEach((_,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=String(i+1);ch.append(o);});}
- fillChapters(); sel.addEventListener('change',fillChapters);
+ fillChapters(); sel.addEventListener('change',()=>{fillChapters();}); ch.addEventListener('change',()=>{const idx=Number(sel.value);if(state.books[idx])openSelectedBook(idx,Number(ch.value)||1);});
 }
 function wireCard(prefix,testament){
  const input=$(prefix+'Search'), btn=$(prefix+'SearchBtn'); const run=()=>{$('searchInput').value=input.value;activeSearchTestament=testament;doSearch();};
  input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(run,150);});input.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(searchTimer);run();}});btn.addEventListener('click',run);
- $(prefix+'Browse').addEventListener('click',()=>{const b=Number($(prefix+'Book').value),c=Number($(prefix+'Chapter').value||1);state.bookIndex=b;state.chapter=c;$('testament').value=testament;renderBookOptions();renderChapters();renderChapter();$('reader').classList.remove('hidden');$('reader').scrollIntoView({behavior:'smooth',block:'start'});});
+ $(prefix+'Browse').addEventListener('click',()=>{showTestamentPage(testament);const b=Number($(prefix+'Book').value),c=Number($(prefix+'Chapter').value||1);openSelectedBook(b,c);});
 }
 wireCard('old','OT');wireCard('new','NT');
 $('searchBtn').addEventListener('click', doSearch);
@@ -1505,3 +1505,81 @@ loadAvailableTranslations();
 // END OF UNIFIED LANGUAGE SYSTEM
 // ============================================
 
+
+
+// ============================================
+// HOME + SEPARATE OLD/NEW TESTAMENT PAGES
+// ============================================
+(function setupTestamentPages(){
+  const oldCard=document.querySelector('#testamentCardTemplates .old-card');
+  const newCard=document.querySelector('#testamentCardTemplates .new-card');
+  const oldSlot=$('oldCardSlot'), newSlot=$('newCardSlot');
+  if(oldCard&&oldSlot) oldSlot.appendChild(oldCard);
+  if(newCard&&newSlot) newSlot.appendChild(newCard);
+  const homeLibrary=$('homeLibrary');
+  const homePage=$('homePage');
+  if(homeLibrary&&homePage) homePage.appendChild(homeLibrary);
+  const readerArea=$('readerArea');
+  if(readerArea) readerArea.classList.add('hidden');
+  document.querySelectorAll('[data-page]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const page=button.dataset.page;
+      if(page==='home') showHomePage();
+      else showTestamentPage(page);
+    });
+  });
+})();
+
+function updatePageNav(active){
+  document.querySelectorAll('.page-nav [data-page]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.page===active);
+  });
+}
+function showHomePage(){
+  $('homePage')?.classList.remove('hidden');
+  $('oldPage')?.classList.add('hidden');
+  $('newPage')?.classList.add('hidden');
+  $('readerArea')?.classList.add('hidden');
+  updatePageNav('home');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showTestamentPage(testament){
+  const isOld=testament==='OT';
+  $('homePage')?.classList.add('hidden');
+  $('oldPage')?.classList.toggle('hidden',!isOld);
+  $('newPage')?.classList.toggle('hidden',isOld);
+  $('readerArea')?.classList.add('hidden');
+  const page=isOld?$('oldPage'):$('newPage');
+  if(page&&$('readerArea')) page.appendChild($('readerArea'));
+  $('testament').value=testament;
+  renderBookOptions();
+  updatePageNav(testament);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderTestamentBookGrids(){
+  if(!state.books.length)return;
+  [['oldBooksGrid','OT'],['newBooksGrid','NT']].forEach(([id,testament])=>{
+    const host=$(id);if(!host)return;host.innerHTML='';
+    state.books.forEach((book,index)=>{
+      if(book.testament!==testament)return;
+      const button=document.createElement('button');
+      button.type='button';button.className='book-choice';button.textContent=book.name;
+      button.addEventListener('click',()=>openSelectedBook(index,1));
+      host.appendChild(button);
+    });
+  });
+}
+function openSelectedBook(bookIndex,chapter){
+  if(!state.books[bookIndex])return;
+  const testament=state.books[bookIndex].testament;
+  showTestamentPage(testament);
+  state.bookIndex=bookIndex;state.chapter=chapter||1;
+  $('testament').value=testament;
+  renderBookOptions();renderChapters();
+  const cardPrefix=testament==='OT'?'old':'new';
+  if($(cardPrefix+'Book'))$(cardPrefix+'Book').value=String(bookIndex);
+  if($(cardPrefix+'Chapter'))$(cardPrefix+'Chapter').value=String(state.chapter);
+  $('readerArea').classList.remove('hidden');
+  renderChapter();
+  $('reader').scrollIntoView({behavior:'smooth',block:'start'});
+}

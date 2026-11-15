@@ -1409,3 +1409,29 @@ select:focus-visible {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* =========================================
+   MULTI-PAGE TESTAMENT NAVIGATION
+========================================= */
+.page-nav{display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:22px}
+.nav-link{border:1px solid transparent;background:transparent;color:#e6eee8;padding:9px 13px;border-radius:999px;font-weight:650;font-size:.88rem}
+.nav-link:hover,.nav-link.active{background:#ffffff16;border-color:#d9b46b;color:#f4d18a}
+.page-view.hidden,.reader-area.hidden{display:none!important}
+.home-testament-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin:30px 0 42px}
+.home-testament-tile{min-height:220px;display:flex;align-items:center;gap:25px;text-align:left;padding:30px;border:1px solid var(--line);border-radius:22px;cursor:pointer;color:#fff;background:linear-gradient(125deg,#173f32,#254f43);box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s}
+.home-testament-tile:hover{transform:translateY(-4px);box-shadow:0 18px 42px #173f3222}
+.home-testament-tile.new-tile{background:linear-gradient(125deg,#203f55,#315d70)}
+.tile-symbol{width:82px;height:82px;flex:0 0 82px;border:1px solid #e0c17b99;border-radius:50%;display:grid;place-items:center;font-size:2.8rem;color:#e0bd72;background:#ffffff10}
+.tile-copy{display:grid;gap:5px}.tile-copy small{font-size:.7rem;letter-spacing:2px;color:#e2bd73;font-weight:800}.tile-copy strong{font:700 clamp(1.5rem,3vw,2.25rem)/1.15 Georgia,serif}.tile-copy em{font-style:normal;color:#e0e9e3}.tile-copy b{margin-top:8px;color:#f0cf89;font-size:.9rem}
+.testament-page{padding-top:16px}.page-heading{margin:18px 0 25px}.page-heading h2{font:700 clamp(2rem,4vw,3rem)/1.1 Georgia,serif;margin:5px 0 8px;color:var(--green)}.page-heading>p:last-child{color:var(--muted);margin:0}.testament-card-slot{margin-bottom:24px}.testament-card-slot .card-art{border-radius:18px 18px 0 0}.testament-card-slot .testament-card{width:100%}
+.testament-card-slot .count,.testament-card-slot .browse{display:none}
+.books-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:11px;margin-top:18px}
+.book-choice{min-height:54px;text-align:left;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-weight:650;box-shadow:0 4px 13px #173f3208}
+.book-choice:hover,.book-choice:focus-visible{border-color:var(--accent);background:var(--green-light);transform:translateY(-1px)}
+.reader-area{margin:28px 0}.reader-area .reader-intro{margin-top:0}.reader-area .reader{scroll-margin-top:95px}
+#homeLibrary{margin-top:32px}
+#testamentCardTemplates{display:none!important}
+@media(max-width:850px){.page-nav{gap:2px;margin-right:8px}.nav-link{padding:8px 9px;font-size:.78rem}.home-testament-grid{gap:14px}.home-testament-tile{padding:22px;gap:16px}}
+@media(max-width:620px){.topbar{flex-wrap:wrap;gap:8px}.page-nav{order:3;width:100%;justify-content:center;margin:0}.nav-link{font-size:.75rem;padding:7px 10px}.home-testament-grid{grid-template-columns:1fr}.home-testament-tile{min-height:160px}.tile-symbol{width:65px;height:65px;flex-basis:65px;font-size:2.2rem}.books-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.book-choice{font-size:.85rem;padding:11px}}
+body.dark .home-testament-tile{border-color:#ffffff20}body.dark .book-choice{background:#1b3028;color:#edf3ed;border-color:#344b40}body.dark .book-choice:hover{background:#274638}

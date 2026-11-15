@@ -20,6 +20,11 @@
       <p>READ · SEARCH · REFLECT</p>
     </div>
   </div>
+  <nav class="page-nav" aria-label="Main navigation">
+    <button type="button" class="nav-link active" data-page="home">Home</button>
+    <button type="button" class="nav-link" data-page="OT">Old Testament</button>
+    <button type="button" class="nav-link" data-page="NT">New Testament</button>
+  </nav>
   <button id="themeBtn" class="iconbtn" aria-label="Toggle dark mode">☾</button>
 </header>
 
@@ -71,6 +76,7 @@
     </div>
   </section>
 
+  <div id="homePage" class="page-view home-page">
   <!-- HERO -->
   <section class="hero">
     <div class="hero-content">
@@ -157,6 +163,61 @@
 
   <section class="testament-grid">
 
+  </section>
+
+  <section class="home-testament-grid" aria-label="Choose a testament">
+    <button type="button" class="home-testament-tile old-tile" data-page="OT">
+      <span class="tile-symbol">✡</span><span class="tile-copy"><small>39 BOOKS</small><strong>Old Testament</strong><em>Genesis to Malachi</em><b>Explore books →</b></span>
+    </button>
+    <button type="button" class="home-testament-tile new-tile" data-page="NT">
+      <span class="tile-symbol">✝</span><span class="tile-copy"><small>27 BOOKS</small><strong>New Testament</strong><em>Matthew to Revelation</em><b>Explore books →</b></span>
+    </button>
+  </section>
+</div>
+
+  </div>
+  <section id="oldPage" class="page-view testament-page hidden">
+    <div class="page-heading"><p class="eyebrow">EXPLORE THE SCRIPTURES</p><h2>Old Testament</h2><p>Choose a book to begin reading. The chapter verses appear only after you select a book.</p></div>
+    <div id="oldCardSlot" class="testament-card-slot"></div>
+    <div class="book-list-panel panel"><div class="sectionhead"><div><p class="eyebrow">39 BOOKS</p><h2>Old Testament Library</h2></div><span class="pill">Genesis – Malachi</span></div><div id="oldBooksGrid" class="books-grid"></div></div>
+  </section>
+  <section id="newPage" class="page-view testament-page hidden">
+    <div class="page-heading"><p class="eyebrow">EXPLORE THE SCRIPTURES</p><h2>New Testament</h2><p>Choose a book to begin reading. The chapter verses appear only after you select a book.</p></div>
+    <div id="newCardSlot" class="testament-card-slot"></div>
+    <div class="book-list-panel panel"><div class="sectionhead"><div><p class="eyebrow">27 BOOKS</p><h2>New Testament Library</h2></div><span class="pill">Matthew – Revelation</span></div><div id="newBooksGrid" class="books-grid"></div></div>
+  </section>
+  <div id="readerArea" class="reader-area hidden">
+  <!-- READER TOOLS -->
+  <div class="section-intro reader-intro">
+    <p class="eyebrow">YOUR READING SPACE</p>
+    <h2>Read the Word</h2>
+  </div>
+
+  <section class="panel reader-tools">
+    <div class="tool-label">READING CONTROLS</div>
+    <div class="toolrow">
+      <button id="prevBtn">← Previous</button>
+      <button id="nextBtn">Next →</button>
+      <span class="tool-divider"></span>
+      <button id="fontDown">A−</button>
+      <button id="fontUp">A+</button>
+      <span class="tool-divider"></span>
+      <button id="readBtn" class="tool-primary">🔊 Read chapter</button>
+      <button id="stopBtn">■ Stop audio</button>
+    </div>
+  </section>
+
+  <!-- BIBLE READER -->
+  <section id="reader" class="reader panel">
+    <div class="empty">
+      <div class="spinner"></div>
+      <h3>Preparing your Bible</h3>
+      <p>Choose a book from the Old or New Testament library to display its verses.</p>
+    </div>
+  </section>
+
+  </div>
+  <div id="testamentCardTemplates" class="hidden">
     <!-- OLD TESTAMENT -->
     <article class="testament-card old-card">
       <div class="card-art old-art">
@@ -212,7 +273,6 @@
         </button>
       </div>
     </article>
-
     <!-- NEW TESTAMENT -->
     <article class="testament-card new-card">
       <div class="card-art new-art">
@@ -267,39 +327,8 @@
           Browse All New Testament Books <span>→</span>
         </button>
       </div>
-    </article>
-
-  </section>
-
-  <!-- READER TOOLS -->
-  <div class="section-intro reader-intro">
-    <p class="eyebrow">YOUR READING SPACE</p>
-    <h2>Read the Word</h2>
-  </div>
-
-  <section class="panel reader-tools">
-    <div class="tool-label">READING CONTROLS</div>
-    <div class="toolrow">
-      <button id="prevBtn">← Previous</button>
-      <button id="nextBtn">Next →</button>
-      <span class="tool-divider"></span>
-      <button id="fontDown">A−</button>
-      <button id="fontUp">A+</button>
-      <span class="tool-divider"></span>
-      <button id="readBtn" class="tool-primary">🔊 Read chapter</button>
-      <button id="stopBtn">■ Stop audio</button>
-    </div>
-  </section>
-
-  <!-- BIBLE READER -->
-  <section id="reader" class="reader panel">
-    <div class="empty">
-      <div class="spinner"></div>
-      <h3>Preparing your Bible</h3>
-      <p>Select a book and press Browse to read its chapter.</p>
-    </div>
-  </section>
-
+    </article>  </div>
+  <section id="homeLibrary" class="home-library">
   <!-- SEARCH RESULTS -->
   <section id="searchResults" class="panel results hidden">
     <div class="sectionhead">
@@ -341,6 +370,8 @@
       <blockquote id="dailyVerse">Loading a verse…</blockquote>
       <button id="saveDaily" class="primary">☆ Save Daily Verse</button>
     </article>
+  </section>
+
   </section>
 
   <footer>
