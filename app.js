@@ -31,7 +31,6 @@ function fullBookName(name,index){
  if(alias)return alias;
  const exact=CANONICAL_BOOKS.find(n=>n.toLowerCase()===key);
  if(exact)return exact;
- // Match abbreviated names from common KJV JSON datasets, including "Gen", "Phlm", "1 Cor".
  const normalized=key.replace(/[^a-z0-9]/g,'');
  const found=CANONICAL_BOOKS.find(n=>n.toLowerCase().replace(/[^a-z0-9]/g,'')===normalized);
  return found || CANONICAL_BOOKS[index] || original;
@@ -98,11 +97,9 @@ function renderChapter(){const b=state.books[state.bookIndex];if(!b)return;const
 }
 function cleanText(s){return String(s).replace(/\[[^\]]*\]/g,m=>m.slice(1,-1)).replace(/[{}]/g,'')}
 function ref(book,ch,v){return `${book} ${ch}:${v}`}
-
-// ============================================
 // USER-SPECIFIC WORD / PHRASE HIGHLIGHTS
 // Highlights are stored in Supabase so they follow the signed-in account.
-// ============================================
+
 let highlightToolbar=null;
 let pendingHighlightSelection=null;
 
@@ -250,22 +247,32 @@ async function removeBibleHighlight(id){
  const mark=document.querySelector(`mark[data-highlight-id="${CSS.escape(String(id))}"]`);
  const targetVerse=Number(mark?.closest('.verse')?.id?.slice(1));
  state.highlights=state.highlights.filter(h=>String(h.id)!==String(id));
- // Re-render the affected verse from its original Bible text and remaining saved ranges.
  if(targetVerse){const host=document.querySelector(`#v${targetVerse} .vtext`);if(host)host.innerHTML=renderHighlightedVerse(cleanText(state.currentVerses[targetVerse-1]||''),state.highlights.filter(h=>h.verse===targetVerse));}
  updateHighlightButton();
 }
+
 function navigateRef(bookName,ch){const i=state.books.findIndex(b=>b.name.toLowerCase()===bookName.toLowerCase());if(i<0)return;openSelectedBook(i,ch)}
 function next(){const b=state.books[state.bookIndex];if(state.chapter<b.chapters.length)state.chapter++;else if(state.bookIndex<65){state.bookIndex++;state.chapter=1}renderBookOptions();renderChapters();renderChapter()}
 function prev(){if(state.chapter>1)state.chapter--;else if(state.bookIndex>0){state.bookIndex--;state.chapter=state.books[state.bookIndex].chapters.length}renderBookOptions();renderChapters();renderChapter()}
 function speak(text){if(!('speechSynthesis'in window)){alert('Audio reading is not supported by this browser.');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=.9;speechSynthesis.speak(u)}
+
 function loadBookmarks(){try{state.bookmarks=JSON.parse(localStorage.getItem('holyBibleBookmarks')||'[]')}catch{state.bookmarks=[]}renderBookmarks()}
 function saveBookmarks(){localStorage.setItem('holyBibleBookmarks',JSON.stringify(state.bookmarks));renderBookmarks()}
 function addBookmark(reference,text){if(state.bookmarks.some(b=>b.reference===reference)){alert('This verse is already bookmarked.');return}state.bookmarks.unshift({reference,text});saveBookmarks()}
 function renderBookmarks(){const host=$('bookmarkList');if(!host)return;if(!state.bookmarks.length){host.innerHTML='<p class="muted">Saved verses will appear here.</p>';return}host.innerHTML='';state.bookmarks.forEach((b,i)=>{const d=document.createElement('div');d.className='bookmark-item';d.innerHTML=`<b>${escapeHTML(b.reference)}</b><p>${escapeHTML(cleanText(b.text))}</p><button data-open="${escapeHTML(b.reference)}">Open</button><button data-remove="${i}">Remove</button>`;host.append(d)});host.onclick=e=>{const o=e.target.closest('[data-open]');const r=e.target.closest('[data-remove]');if(o){const m=o.dataset.open.match(/^(.*?)\s+(\d+):(\d+)$/);if(m){navigateRef(m[1],Number(m[2]));setTimeout(()=>document.getElementById('v'+m[3])?.scrollIntoView({behavior:'smooth'}),100)}}if(r){state.bookmarks.splice(Number(r.dataset.remove),1);saveBookmarks()}}}
-function renderDaily(){if(!state.books.length)return;const seed=new Date().getDate()+new Date().getMonth()*31;const b=state.books[(seed*7)%state.books.length];const ch=(seed*3)%b.chapters.length;const v=(seed*11)%b.chapters[ch].length;state.daily={reference:ref(b.name,ch+1,v+1),text:b.chapters[ch][v]};$('dailyVerse').textContent=state.daily.reference+' — '+cleanText(state.daily.text)}
+
+function renderDaily(){
+ if(!state.books.length)return;
+ const seed=new Date().getDate()+new Date().getMonth()*31;
+ const b=state.books[(seed*7)%state.books.length];
+ const ch=(seed*3)%b.chapters.length;
+ const v=(seed*11)%b.chapters[ch].length;
+ state.daily={reference:ref(b.name,ch+1,v+1),text:b.chapters[ch][v]};
+ $('dailyVerse').textContent=state.daily.reference+' — '+cleanText(state.daily.text);
+}
+
 function parseBibleReference(query){
  const q=query.trim().replace(/\s+/g,' ');
- // Match full book names and common abbreviations, then chapter:verse (also chapter:verse-verse).
  const m=q.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*-\s*(\d+))?$/i);
  if(!m)return null;
  const typed=m[1].toLowerCase().replace(/\./g,'').trim();
@@ -287,117 +294,6 @@ function normalizeSearchText(value){
 
 let searchTimer = null;
 let activeSearchTestament = 'all';
-function doSearch() {
-  const raw = $('searchInput').value || '';
-  const q = normalizeSearchText(raw);
-  const inlineMode = activeSearchTestament === 'OT' || activeSearchTestament === 'NT';
-  const host = inlineMode
-    ? $(activeSearchTestament === 'OT' ? 'oldInlineResults' : 'newInlineResults')
-    : $('resultsList');
-  const panel = inlineMode
-    ? host
-    : $('searchResults');
-
-  host.innerHTML = '';
-  if (!q) {
-    panel.classList.add('hidden');
-    return;
-  }
-
-  panel.classList.remove('hidden');
-  let count = 0;
-  const maxResults = 250;
-  const eligibleBooks = state.books.filter(b =>
-    activeSearchTestament === 'all' || b.testament === activeSearchTestament
-  );
-
-  const parsed = parseBibleReference(raw);
-  if (parsed && !parsed.invalid &&
-      (activeSearchTestament === 'all' || parsed.book.testament === activeSearchTestament)) {
-    const verses = parsed.book.chapters[parsed.chapter - 1] || [];
-    for (let v = parsed.verse; v <= parsed.verseEnd; v++) {
-      addResult(parsed.book, parsed.chapter, v, verses[v - 1], host);
-      count++;
-    }
-  } else {
-    const terms = q.split(/\s+/).filter(Boolean);
-    outer:
-    for (const book of eligibleBooks) {
-      for (let ci = 0; ci < book.chapters.length; ci++) {
-        const verses = book.chapters[ci];
-        for (let vi = 0; vi < verses.length; vi++) {
-          const verseText = normalizeSearchText(verses[vi]);
-          if (terms.every(term => verseText.includes(term))) {
-            addResult(book, ci + 1, vi + 1, verses[vi], host);
-            count++;
-            if (count >= maxResults) break outer;
-          }
-        }
-      }
-    }
-  }
-
-  if (!count) {
-    host.innerHTML = '<p class="muted">No matches found. Try “love”, “lov”, or a reference such as “John 3:16”.</p>';
-  } else {
-    const message = document.createElement('p');
-    message.className = 'muted result-count';
-    message.textContent = `Showing ${count}${count === maxResults ? '+' : ''} result(s).`;
-    host.prepend(message);
-  }
-
-  // Results for each testament appear immediately under that testament's search bar.
-  if (!inlineMode) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function addResult(b,ch,v,text,host=$('resultsList')){const d=document.createElement('div');d.className='result-item';d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;host.append(d)}
-function handleResultClick(e){const o=e.target.closest('[data-ref]'),s=e.target.closest('[data-save]');if(o){const p=parseBibleReference(o.dataset.ref);if(p&&!p.invalid){navigateRef(p.book.name,p.chapter);setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100)}}if(s){const p=parseBibleReference(s.dataset.save);if(p&&!p.invalid)addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1])}}
-$('resultsList').addEventListener('click',handleResultClick);
-$('oldInlineResults').addEventListener('click',handleResultClick);
-$('newInlineResults').addEventListener('click',handleResultClick);
-bookSelect.addEventListener('change',()=>{state.bookIndex=+bookSelect.value;state.chapter=1;renderChapters();renderChapter()});
-chapterSelect.addEventListener('change',()=>{state.chapter=+chapterSelect.value;renderChapter()});
-$('testament').addEventListener('change',renderBookOptions);
-$('prevBtn').addEventListener('click',prev);$('nextBtn').addEventListener('click',next);
-
-function fillTestamentCard(bookId, chapterId, testament) {
- const sel=$(bookId), ch=$(chapterId); if(!sel||!ch)return; sel.disabled=false; ch.disabled=false; sel.innerHTML='';
- state.books.forEach((b,i)=>{if(b.testament===testament){const o=document.createElement('option');o.value=i;o.textContent=b.name;sel.append(o);}});
- const first=state.books.findIndex(b=>b.testament===testament); sel.value=String(state.books[state.bookIndex]?.testament===testament?state.bookIndex:first);
- function fillChapters(){const b=state.books[Number(sel.value)];ch.innerHTML='';if(b)b.chapters.forEach((_,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=String(i+1);ch.append(o);});}
- fillChapters(); sel.addEventListener('change',()=>{fillChapters();}); ch.addEventListener('change',()=>{const idx=Number(sel.value);if(state.books[idx])openSelectedBook(idx,Number(ch.value)||1);});
-}
-function wireCard(prefix,testament){
- const input=$(prefix+'Search'), btn=$(prefix+'SearchBtn'); const run=()=>{$('searchInput').value=input.value;activeSearchTestament=testament;doSearch();};
- input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(run,150);});input.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(searchTimer);run();}});btn.addEventListener('click',run);
- $(prefix+'Browse').addEventListener('click',()=>{showTestamentPage(testament);const b=Number($(prefix+'Book').value),c=Number($(prefix+'Chapter').value||1);openSelectedBook(b,c);});
-}
-wireCard('old','OT');wireCard('new','NT');
-$('searchBtn').addEventListener('click', doSearch);
-
-$('searchInput').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(doSearch, 120);
-});
-
-$('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    clearTimeout(searchTimer);
-    doSearch();
-  }
-});
-$('closeResults').addEventListener('click',()=>$('searchResults').classList.add('hidden'));
-$('fontUp').addEventListener('click',()=>{state.font=Math.min(1.8,state.font+.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
-$('fontDown').addEventListener('click',()=>{state.font=Math.max(.85,state.font-.1);document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem')});
-$('readBtn').addEventListener('click',()=>{const b=state.books[state.bookIndex];speak(`${b.name} chapter ${state.chapter}. `+state.currentVerses.map((v,i)=>`Verse ${i+1}. ${cleanText(v)}`).join(' '))});
-$('stopBtn').addEventListener('click',()=>speechSynthesis?.cancel());
-$('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('holyBibleDark',document.body.classList.contains('dark'))});
-$('clearBookmarks').addEventListener('click',()=>{if(confirm('Clear all saved bookmarks?')){state.bookmarks=[];saveBookmarks()}});
-$('dailyBtn').addEventListener('click',()=>{const b=state.books[Math.floor(Math.random()*state.books.length)];const ch=Math.floor(Math.random()*b.chapters.length),v=Math.floor(Math.random()*b.chapters[ch].length);state.daily={reference:ref(b.name,ch+1,v+1),text:b.chapters[ch][v]};$('dailyVerse').textContent=state.daily.reference+' — '+cleanText(state.daily.text)});
-$('saveDaily').addEventListener('click',()=>state.daily&&addBookmark(state.daily.reference,state.daily.text));
-if(localStorage.getItem('holyBibleDark')==='true')document.body.classList.add('dark');
-loadBible();
-// ===============================
 // SUPABASE LOGIN AND SIGN UP
 // ===============================
 
@@ -411,9 +307,7 @@ const passwordEye = $('passwordEye');
 
 togglePassword.addEventListener('click', () => {
   const isHidden = authPassword.type === 'password';
-
   authPassword.type = isHidden ? 'text' : 'password';
-
   passwordEye.textContent = isHidden ? '🙈' : '👁';
 
   togglePassword.setAttribute(
@@ -421,6 +315,7 @@ togglePassword.addEventListener('click', () => {
     isHidden ? 'Hide password' : 'Show password'
   );
 });
+
 function showAuthMessage(message, isError = false) {
   authMessage.textContent = message;
   authMessage.style.color = isError ? '#c0392b' : 'var(--green)';
@@ -435,12 +330,18 @@ function clearRenderedBibleHighlights() {
 
 function updateAuthScreen(session) {
   const signedIn = !!session;
+
+  // Show navigation only after successful login.
+  document.body.classList.toggle('auth-logged-in', signedIn);
+
   const previousUserId = state.userId;
   state.userId = session?.user?.id || null;
+
   if (previousUserId !== state.userId) {
     state.highlights = [];
     clearRenderedBibleHighlights();
     hideHighlightToolbar();
+
     if (signedIn && state.books.length) {
       const currentBook = state.books[state.bookIndex]?.name;
       if (currentBook) loadAndApplyBibleHighlights(currentBook, state.chapter);
@@ -698,14 +599,12 @@ function translationMessage(message) {
     translationStatus.textContent = message;
   }
 }
-
 // ============================================
 // INTERFACE TRANSLATION
 // ============================================
 
 const uiOriginalText = new WeakMap();
 const uiTrackedText = new Set();
-
 const uiOriginalAttributes = new WeakMap();
 const uiTrackedElements = new Set();
 
@@ -760,6 +659,7 @@ function getUiUsage(language) {
     return { date: today, characters: 0 };
   }
 }
+
 const WARAY_UI_DICTIONARY = {
   'Holy Bible': 'Baraan nga Biblia',
   'READ · SEARCH · REFLECT': 'BASA · PAMILING · PAMALANDONG',
@@ -807,6 +707,7 @@ const WARAY_UI_DICTIONARY = {
   'Browse All Old Testament Books': 'Usisaha an Ngatanan nga Libro han Daan nga Testamento',
   'Browse All New Testament Books': 'Usisaha an Ngatanan nga Libro han Bag-o nga Testamento'
 };
+
 Object.assign(WARAY_UI_DICTIONARY, {
   'READ · SEARCH · REFLECT': 'BASA · PAMILING · PAMALANDONG',
   'Sign in to your Holy Bible account.': 'Sulod ha imo account han Baraan nga Biblia.',
@@ -864,21 +765,19 @@ Object.assign(WARAY_UI_DICTIONARY, {
   'This translation does not contain all 66 Bible books.': 'Diri kompleto an 66 nga libro hini nga hubad.',
   'Could not restore the saved KJV Bible.': 'Diri maibalik an gintipigan nga KJV nga Biblia.'
 });
+
 async function translateInterfaceText(text, language) {
   const original = String(text || '').trim();
 
-if (!original || language === 'en') return original;
+  if (!original || language === 'en') return original;
 
-// Use the built-in Waray dictionary first.
-// If no exact match exists, continue to the translation service.
-if (
-  language === 'waray' &&
-  WARAY_UI_DICTIONARY[original]
-) {
-  return WARAY_UI_DICTIONARY[original];
-}
+  if (
+    language === 'waray' &&
+    WARAY_UI_DICTIONARY[original]
+  ) {
+    return WARAY_UI_DICTIONARY[original];
+  }
 
-  // MyMemory has a 500-byte maximum per request.
   if (new TextEncoder().encode(original).length > 450) {
     return original;
   }
@@ -891,7 +790,6 @@ if (
 
   const usage = getUiUsage(language);
 
-  // Keep below the anonymous daily allowance.
   if (usage.characters + original.length > 4500) {
     return original;
   }
@@ -1010,7 +908,6 @@ function collectUiAttributes(root = document) {
 
   return found;
 }
-
 function preserveTextSpacing(original, translated) {
   const leading = original.match(/^\s*/)?.[0] || '';
   const trailing = original.match(/\s*$/)?.[0] || '';
@@ -1081,13 +978,15 @@ async function applyInterfaceLanguage(language) {
   const run = ++interfaceTranslationRun;
 
   document.documentElement.lang = language;
-if (language === 'waray') {
-  document.title = 'Baraan nga Biblia — Kasuratan';
-} else if (language === 'en') {
-  document.title = 'Holy Bible — Scriptures';
-} else {
-  document.title = 'Holy Bible — Scriptures';
-}
+
+  if (language === 'waray') {
+    document.title = 'Baraan nga Biblia — Kasuratan';
+  } else if (language === 'en') {
+    document.title = 'Holy Bible — Scriptures';
+  } else {
+    document.title = 'Holy Bible — Scriptures';
+  }
+
   document.documentElement.dir =
     ['ar', 'he', 'ur'].includes(language) ? 'rtl' : 'ltr';
 
@@ -1246,6 +1145,7 @@ const uiTranslationObserver = new MutationObserver(records => {
     );
   });
 });
+
 uiTranslationObserver.observe(document.body, {
   childList: true,
   subtree: true
@@ -1254,6 +1154,7 @@ uiTranslationObserver.observe(document.body, {
 // ============================================
 // BIBLE TRANSLATION CATALOG
 // ============================================
+
 function translationLanguageMatches(item, language) {
   const acceptedCodes = TRANSLATION_LANGUAGES[language] || [];
 
@@ -1300,6 +1201,277 @@ function translationLanguageMatches(item, language) {
     )
   );
 }
+function doSearch() {
+  const raw = $('searchInput').value || '';
+  const q = normalizeSearchText(raw);
+  const inlineMode = activeSearchTestament === 'OT' || activeSearchTestament === 'NT';
+  const host = inlineMode
+    ? $(activeSearchTestament === 'OT' ? 'oldInlineResults' : 'newInlineResults')
+    : $('resultsList');
+  const panel = inlineMode ? host : $('searchResults');
+
+  host.innerHTML = '';
+
+  if (!q) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  let count = 0;
+  const maxResults = 250;
+
+  const eligibleBooks = state.books.filter(b =>
+    activeSearchTestament === 'all' || b.testament === activeSearchTestament
+  );
+
+  const parsed = parseBibleReference(raw);
+
+  if (parsed && !parsed.invalid &&
+      (activeSearchTestament === 'all' || parsed.book.testament === activeSearchTestament)) {
+    const verses = parsed.book.chapters[parsed.chapter - 1] || [];
+
+    for (let v = parsed.verse; v <= parsed.verseEnd; v++) {
+      addResult(parsed.book, parsed.chapter, v, verses[v - 1], host);
+      count++;
+    }
+  } else {
+    const terms = q.split(/\s+/).filter(Boolean);
+
+    outer:
+    for (const book of eligibleBooks) {
+      for (let ci = 0; ci < book.chapters.length; ci++) {
+        const verses = book.chapters[ci];
+
+        for (let vi = 0; vi < verses.length; vi++) {
+          const verseText = normalizeSearchText(verses[vi]);
+
+          if (terms.every(term => verseText.includes(term))) {
+            addResult(book, ci + 1, vi + 1, verses[vi], host);
+            count++;
+
+            if (count >= maxResults) break outer;
+          }
+        }
+      }
+    }
+  }
+
+  if (!count) {
+    host.innerHTML = '<p class="muted">No matches found. Try “love”, “lov”, or a reference such as “John 3:16”.</p>';
+  } else {
+    const message = document.createElement('p');
+    message.className = 'muted result-count';
+    message.textContent = `Showing ${count}${count === maxResults ? '+' : ''} result(s).`;
+    host.prepend(message);
+  }
+
+  if (!inlineMode) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function addResult(b,ch,v,text,host=$('resultsList')) {
+  const d=document.createElement('div');
+  d.className='result-item';
+  d.innerHTML=`<b>${escapeHTML(ref(b.name,ch,v))}</b><p>${escapeHTML(cleanText(text))}</p><button data-ref="${escapeHTML(ref(b.name,ch,v))}">Open verse</button><button data-save="${escapeHTML(ref(b.name,ch,v))}">☆ Save</button>`;
+  host.append(d);
+}
+
+function handleResultClick(e) {
+  const o=e.target.closest('[data-ref]');
+  const s=e.target.closest('[data-save]');
+
+  if(o) {
+    const p=parseBibleReference(o.dataset.ref);
+
+    if(p&&!p.invalid) {
+      navigateRef(p.book.name,p.chapter);
+      setTimeout(()=>document.getElementById('v'+p.verse)?.scrollIntoView({behavior:'smooth'}),100);
+    }
+  }
+
+  if(s) {
+    const p=parseBibleReference(s.dataset.save);
+
+    if(p&&!p.invalid) {
+      addBookmark(ref(p.book.name,p.chapter,p.verse),p.book.chapters[p.chapter-1][p.verse-1]);
+    }
+  }
+}
+
+$('resultsList').addEventListener('click',handleResultClick);
+$('oldInlineResults').addEventListener('click',handleResultClick);
+$('newInlineResults').addEventListener('click',handleResultClick);
+
+bookSelect.addEventListener('change',()=>{
+  state.bookIndex=+bookSelect.value;
+  state.chapter=1;
+  renderChapters();
+  renderChapter();
+});
+
+chapterSelect.addEventListener('change',()=>{
+  state.chapter=+chapterSelect.value;
+  renderChapter();
+});
+
+$('testament').addEventListener('change',renderBookOptions);
+$('prevBtn').addEventListener('click',prev);
+$('nextBtn').addEventListener('click',next);
+
+function fillTestamentCard(bookId, chapterId, testament) {
+  const sel=$(bookId), ch=$(chapterId);
+
+  if(!sel||!ch)return;
+
+  sel.disabled=false;
+  ch.disabled=false;
+  sel.innerHTML='';
+
+  state.books.forEach((b,i)=>{
+    if(b.testament===testament){
+      const o=document.createElement('option');
+      o.value=i;
+      o.textContent=b.name;
+      sel.append(o);
+    }
+  });
+
+  const first=state.books.findIndex(b=>b.testament===testament);
+
+  sel.value=String(
+    state.books[state.bookIndex]?.testament===testament
+      ? state.bookIndex
+      : first
+  );
+
+  function fillChapters(){
+    const b=state.books[Number(sel.value)];
+    ch.innerHTML='';
+
+    if(b) {
+      b.chapters.forEach((_,i)=>{
+        const o=document.createElement('option');
+        o.value=i+1;
+        o.textContent=String(i+1);
+        ch.append(o);
+      });
+    }
+  }
+
+  fillChapters();
+
+  sel.addEventListener('change',()=>fillChapters());
+
+  ch.addEventListener('change',()=>{
+    const idx=Number(sel.value);
+    if(state.books[idx])openSelectedBook(idx,Number(ch.value)||1);
+  });
+}
+
+function wireCard(prefix,testament){
+  const input=$(prefix+'Search');
+  const btn=$(prefix+'SearchBtn');
+
+  const run=()=>{
+    $('searchInput').value=input.value;
+    activeSearchTestament=testament;
+    doSearch();
+  };
+
+  input.addEventListener('input',()=>{
+    clearTimeout(searchTimer);
+    searchTimer=setTimeout(run,150);
+  });
+
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      clearTimeout(searchTimer);
+      run();
+    }
+  });
+
+  btn.addEventListener('click',run);
+
+  $(prefix+'Browse').addEventListener('click',()=>{
+    showTestamentPage(testament);
+    const b=Number($(prefix+'Book').value);
+    const c=Number($(prefix+'Chapter').value||1);
+    openSelectedBook(b,c);
+  });
+}
+
+wireCard('old','OT');
+wireCard('new','NT');
+
+$('searchBtn').addEventListener('click', doSearch);
+
+$('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 120);
+});
+
+$('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimer);
+    doSearch();
+  }
+});
+
+$('closeResults').addEventListener('click',()=>$('searchResults').classList.add('hidden'));
+
+$('fontUp').addEventListener('click',()=>{
+  state.font=Math.min(1.8,state.font+.1);
+  document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem');
+});
+
+$('fontDown').addEventListener('click',()=>{
+  state.font=Math.max(.85,state.font-.1);
+  document.querySelectorAll('.vtext').forEach(e=>e.style.fontSize=state.font+'rem');
+});
+
+$('readBtn').addEventListener('click',()=>{
+  const b=state.books[state.bookIndex];
+  speak(`${b.name} chapter ${state.chapter}. `+state.currentVerses.map((v,i)=>`Verse ${i+1}. ${cleanText(v)}`).join(' '));
+});
+
+$('stopBtn').addEventListener('click',()=>speechSynthesis?.cancel());
+
+$('themeBtn').addEventListener('click',()=>{
+  document.body.classList.toggle('dark');
+  localStorage.setItem('holyBibleDark',document.body.classList.contains('dark'));
+});
+
+$('clearBookmarks').addEventListener('click',()=>{
+  if(confirm('Clear all saved bookmarks?')){
+    state.bookmarks=[];
+    saveBookmarks();
+  }
+});
+
+$('dailyBtn').addEventListener('click',()=>{
+  const b=state.books[Math.floor(Math.random()*state.books.length)];
+  const ch=Math.floor(Math.random()*b.chapters.length);
+  const v=Math.floor(Math.random()*b.chapters[ch].length);
+
+  state.daily={
+    reference:ref(b.name,ch+1,v+1),
+    text:b.chapters[ch][v]
+  };
+
+  $('dailyVerse').textContent=state.daily.reference+' — '+cleanText(state.daily.text);
+});
+
+$('saveDaily').addEventListener('click',()=>{
+  if(state.daily)addBookmark(state.daily.reference,state.daily.text);
+});
+
+if(localStorage.getItem('holyBibleDark')==='true') {
+  document.body.classList.add('dark');
+}
+
+loadBible();
 
 async function loadAvailableTranslations() {
   if (!languageSelect || !translationVersionSelect) return;
@@ -1317,13 +1489,11 @@ async function loadAvailableTranslations() {
 
     const data = await response.json();
 
-    // Keep the existing safety check for complete,
-    // explicitly identified public-domain translations.
     availableTranslations = (data.translations || []).filter(item =>
-  item.numberOfBooks === 66 &&
-  Array.isArray(item.availableFormats) &&
-  item.availableFormats.includes('json')
-);
+      item.numberOfBooks === 66 &&
+      Array.isArray(item.availableFormats) &&
+      item.availableFormats.includes('json')
+    );
 
     updateTranslationVersionOptions();
 
@@ -1642,10 +1812,8 @@ if (languageSelect) {
 
     localStorage.setItem('holyBibleLanguage', language);
 
-    // Change the entire interface.
     applyInterfaceLanguage(language);
 
-    // Update the available Bible translations.
     updateTranslationVersionOptions();
 
     if (language === 'en') {
@@ -1667,6 +1835,7 @@ if (languageSelect) {
     }
   });
 }
+
 if (translationVersionSelect) {
   translationVersionSelect.addEventListener('change', async () => {
     const selectedVersion = translationVersionSelect.value;
@@ -1676,7 +1845,7 @@ if (translationVersionSelect) {
     }
   });
 }
-// Start interface and Bible translation systems.
+
 applyInterfaceLanguage(currentInterfaceLanguage);
 loadAvailableTranslations();
 
@@ -1684,25 +1853,31 @@ loadAvailableTranslations();
 // END OF UNIFIED LANGUAGE SYSTEM
 // ============================================
 
-
-
 // ============================================
 // HOME + SEPARATE OLD/NEW TESTAMENT PAGES
 // ============================================
+
 (function setupTestamentPages(){
   const oldCard=document.querySelector('#testamentCardTemplates .old-card');
   const newCard=document.querySelector('#testamentCardTemplates .new-card');
   const oldSlot=$('oldCardSlot'), newSlot=$('newCardSlot');
+
   if(oldCard&&oldSlot) oldSlot.appendChild(oldCard);
   if(newCard&&newSlot) newSlot.appendChild(newCard);
+
   const homeLibrary=$('homeLibrary');
   const homePage=$('homePage');
+
   if(homeLibrary&&homePage) homePage.appendChild(homeLibrary);
+
   const readerArea=$('readerArea');
+
   if(readerArea) readerArea.classList.add('hidden');
+
   document.querySelectorAll('[data-page]').forEach(button=>{
     button.addEventListener('click',()=>{
       const page=button.dataset.page;
+
       if(page==='home') showHomePage();
       else showTestamentPage(page);
     });
@@ -1714,51 +1889,97 @@ function updatePageNav(active){
     btn.classList.toggle('active',btn.dataset.page===active);
   });
 }
+
 function showHomePage(){
   $('homePage')?.classList.remove('hidden');
   $('oldPage')?.classList.add('hidden');
   $('newPage')?.classList.add('hidden');
   $('readerArea')?.classList.add('hidden');
+
   updatePageNav('home');
+
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
 function showTestamentPage(testament){
   const isOld=testament==='OT';
+
   $('homePage')?.classList.add('hidden');
   $('oldPage')?.classList.toggle('hidden',!isOld);
   $('newPage')?.classList.toggle('hidden',isOld);
   $('readerArea')?.classList.add('hidden');
+
   const page=isOld?$('oldPage'):$('newPage');
-  if(page&&$('readerArea')) page.appendChild($('readerArea'));
+
+  if(page&&$('readerArea')) {
+    page.appendChild($('readerArea'));
+  }
+
   $('testament').value=testament;
+
   renderBookOptions();
   updatePageNav(testament);
+
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
 function renderTestamentBookGrids(){
   if(!state.books.length)return;
+
   [['oldBooksGrid','OT'],['newBooksGrid','NT']].forEach(([id,testament])=>{
-    const host=$(id);if(!host)return;host.innerHTML='';
+    const host=$(id);
+
+    if(!host)return;
+
+    host.innerHTML='';
+
     state.books.forEach((book,index)=>{
       if(book.testament!==testament)return;
+
       const button=document.createElement('button');
-      button.type='button';button.className='book-choice';button.textContent=book.name;
+
+      button.type='button';
+      button.className='book-choice';
+      button.textContent=book.name;
+
       button.addEventListener('click',()=>openSelectedBook(index,1));
+
       host.appendChild(button);
     });
   });
 }
+
 function openSelectedBook(bookIndex,chapter){
   if(!state.books[bookIndex])return;
+
   const testament=state.books[bookIndex].testament;
+
   showTestamentPage(testament);
-  state.bookIndex=bookIndex;state.chapter=chapter||1;
+
+  state.bookIndex=bookIndex;
+  state.chapter=chapter||1;
+
   $('testament').value=testament;
-  renderBookOptions();renderChapters();
+
+  renderBookOptions();
+  renderChapters();
+
   const cardPrefix=testament==='OT'?'old':'new';
-  if($(cardPrefix+'Book'))$(cardPrefix+'Book').value=String(bookIndex);
-  if($(cardPrefix+'Chapter'))$(cardPrefix+'Chapter').value=String(state.chapter);
+
+  if($(cardPrefix+'Book')) {
+    $(cardPrefix+'Book').value=String(bookIndex);
+  }
+
+  if($(cardPrefix+'Chapter')) {
+    $(cardPrefix+'Chapter').value=String(state.chapter);
+  }
+
   $('readerArea').classList.remove('hidden');
+
   renderChapter();
-  $('reader').scrollIntoView({behavior:'smooth',block:'start'});
+
+  $('reader').scrollIntoView({
+    behavior:'smooth',
+    block:'start'
+  });
 }

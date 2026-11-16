@@ -1512,3 +1512,9 @@ body.dark .highlight-toolbar { background: #1b3028; color: #edf3ed; border-color
   .highlight-selection-status { flex-basis: 100%; }
   .toolrow .tool-highlight { width: 100%; }
 }
+
+
+/* Keep the complete navigation header hidden on the login / sign-up screen. */
+body:not(.auth-logged-in) .topbar {
+  display: none !important;
+}
